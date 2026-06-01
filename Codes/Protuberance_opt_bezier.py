@@ -435,8 +435,8 @@ cy_M06 = np.array([
 ])
 
 polynomial_regression(cd_M06, cy_M06, 1, 0., 4, mode = True)
-model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0, 1, 4, mode = False)
+#model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0, 1, 4, mode = False)
 
-#sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
-plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,poly_transformer= poly)
-#plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06)
+sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
+#plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,poly_transformer= poly)
+plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06)
