@@ -340,12 +340,12 @@ def kriging(CD, CY, w_cd, w_cy):
     # MOdelo kriging
 
     # Modelo CD
-    sm_cd = KRG(theta0=[1e-2]*3, print_global=False)
+    sm_cd = KRG(poly = "quadratic", theta0=[0.5]*3, print_global=False)
     sm_cd.set_training_values(X_coded, CD_reshaped)
     sm_cd.train()
 
     # Modelo Cy
-    sm_cy = KRG(theta0=[1e-2]*3, print_global=False)
+    sm_cy = KRG(poly = "quadratic", theta0=[0.5]*3, print_global=False)
     sm_cy.set_training_values(X_coded, CY_reshaped)
     sm_cy.train()
 
@@ -395,7 +395,6 @@ def kriging(CD, CY, w_cd, w_cy):
     return sm_cd, sm_cy, x_opt
 
 
-sm_cd, sm_cy, x_opt = kriging(CD, CY, 0, 1)
 
 #plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, CY)
 
@@ -415,7 +414,7 @@ cd_M06 = np.array([
     0.71797325,
     0.71814265,
     0.71777072,
-    0.71884376,
+    0.71884376
 ])
 cy_M06 = np.array([
     0.017183182,
@@ -432,10 +431,12 @@ cy_M06 = np.array([
     0.01765875,
     0.017155085,
     0.01817863,
-    0.015968937,
+    0.015968937
 ])
 
-polynomial_regression(cd_M06, cy_M06, 0, 1, 4, mode = True)
+polynomial_regression(cd_M06, cy_M06, 1, 0., 4, mode = True)
 model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0, 1, 4, mode = False)
 
+#sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
 plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,poly_transformer= poly)
+#plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06)
