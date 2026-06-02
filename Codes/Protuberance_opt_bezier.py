@@ -8,6 +8,8 @@ from scipy.optimize import minimize
 from mpl_toolkits.mplot3d import Axes3D
 import itertools
 from smt.surrogate_models import KRG
+import os
+import Values
 
 # Plots config
 plt.rcParams.update({
@@ -82,14 +84,21 @@ X_coded = np.array([
 
 #==================================================================================
 
-def objective(x, model_CD, model_CY, w_cd, w_cy, poly):
+def objective(x, model_CD, model_CY, w_cd, w_cy, poly, Cds, Cys):
     x = np.array(x).reshape(1, -1)
+
+    CD_min, CD_max = Cds
+    CY_min, CY_max = Cys
     x_poly = poly.transform(x)
 
     cd = model_CD.predict(x_poly)[0]
     cy = model_CY.predict(x_poly)[0]
 
-    return w_cd*cd + w_cy*cy
+    cd_norm = (cd - CD_min)/(CD_max - CD_min)
+    cy_norm = (cy - CY_min)/(CY_max - CY_min)
+
+    return w_cd*cd_norm + w_cy*cy_norm
+
 
 # desnormalizar
 def coded_to_real(x):
@@ -133,10 +142,13 @@ def polynomial_regression(CD, CY, w_cd, w_cy, deg, mode):
 
     # optimización
     bounds = [(-1,1), (-1,1), (-1,1)]
-    x0 = [0,0,0]
-
-    result = minimize(objective, x0,args = (model_CD, model_CY, w_cd, w_cy, poly),
-                        bounds=bounds, method='SLSQP')
+    x0 = [0.5,0.5,0.5]
+    #print("Valor en el centro:", objective([0,0,0], model_CD, model_CY, w_cd, w_cy, poly))
+    #print("Valor un poco más lejos:", objective([0.5,0.5,0.5], model_CD, model_CY, w_cd, w_cy, poly))
+    Cds = [CD.min(), CD.max()]
+    Cys = [CY.min(), CY.max()]
+    result = minimize(objective, x0,args = (model_CD, model_CY, w_cd, w_cy, poly, Cds, Cys),
+                        bounds=bounds, method='SLSQP', options={'eps': 1e-4})
 
     x_opt = result.x
     infx_opt, infy_opt, supx_opt = coded_to_real(x_opt)
@@ -185,7 +197,7 @@ def polynomial_regression(CD, CY, w_cd, w_cy, deg, mode):
 # Variables globales para los labels
 labels = ["INF_X", "INF_Y", "SUP_X"]
 
-def plot_surfaces(model_type, model, target_name, x_fixed, ccd_points, y_true, poly_transformer=None, resolution=100):
+def plot_surfaces(model_type, model, target_name, x_fixed, ccd_points, y_true, save_dir, poly_transformer=None, resolution=100):
     """
     Inputs:
     - model_type: str, "poly" para Regresión Polinomial, "kriging" para Surrogate Kriging.
@@ -197,7 +209,7 @@ def plot_surfaces(model_type, model, target_name, x_fixed, ccd_points, y_true, p
     - poly_transformer: objeto PolynomialFeatures (solo necesario si model_type == "poly").
     - resolution: int, cantidad de puntos en la malla.
     """
-    
+    os.makedirs(save_dir, exist_ok=True)
     # Asignar la etiqueta matemática correspondiente
     if target_name.lower() == "cd":
         bar_label = "$C_D$"
@@ -291,6 +303,14 @@ def plot_surfaces(model_type, model, target_name, x_fixed, ccd_points, y_true, p
             f"{labels[var1]} vs {labels[var2]}\n"
             f"{labels[fixed_var]} fixed = {x_fixed[fixed_var]:.3f}"
         )
+
+        # Creamos un nombre de archivo dinámico y limpio basado en las variables analizadas
+        filename = f"superficie_{target_name.lower()}_{labels[var1]}_vs_{labels[var2]}.png"
+        full_path = os.path.join(save_dir, filename)
+        
+        # Guardamos con buena resolución (dpi=300) y recortando bordes blancos sobrantes
+        plt.savefig(full_path, dpi=300, bbox_inches='tight')
+        print(f"Gráfica guardada con éxito en: {full_path}")
 
         plt.show()
 
@@ -398,45 +418,49 @@ def kriging(CD, CY, w_cd, w_cy):
 
 #plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, CY)
 
+# RESULTADOS OBTENIDOS PARA M 0.6
+cd_M06, cy_M06 = Values.values(M = 0.6)
 
-cd_M06 = np.array([
-    0.71847113,
-    0.71870199,
-    0.71900538,
-    0.71880551,
-    0.72066854,
-    0.71846812,
-    0.71918084,
-    0.71693225,
-    0.71829,
-    0.7182505,
-    0.71757527,
-    0.71797325,
-    0.71814265,
-    0.71777072,
-    0.71884376
-])
-cy_M06 = np.array([
-    0.017183182,
-    0.016057047,
-    0.016013796,
-    0.016918182,
-    0.017112903,
-    0.01619539,
-    0.016316143,
-    0.018736481,
-    0.01741,
-    0.01802637,
-    0.01745053,
-    0.01765875,
-    0.017155085,
-    0.01817863,
-    0.015968937
-])
+ruta_06_poly_cd = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_06\Polynomial\Cd"
+ruta_06_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_06\Polynomial\Cy"
 
-polynomial_regression(cd_M06, cy_M06, 1, 0., 4, mode = True)
-#model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0, 1, 4, mode = False)
+
+polynomial_regression(cd_M06, cy_M06, 0.5, 0.5, 4, mode = True)
+model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0.5, 0.5, 4, mode = False)
+
+plot_surfaces("poly", model_CD, "cd", x_opt_06, X_coded, cd_M06,  ruta_06_poly_cd, poly_transformer= poly)
+plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,  ruta_06_poly_cy, poly_transformer= poly)
+
 
 sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
-#plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,poly_transformer= poly)
-plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06)
+
+ruta_06_krg_cd = r"Images\Opt_06\Kriging\Cd"
+ruta_06_krg_cy = r"Images\Opt_06\Kriging\Cy"
+
+plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M06, ruta_06_krg_cd)
+plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06, ruta_06_krg_cy)
+
+# Results M0.8=========================================================================================
+
+cd_M08, cy_M08 = Values.values(M = 0.8)
+
+# Polynomial ==========================================================================================
+ruta_08_poly_cd = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_08\Polynomial\Cd"
+ruta_08_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_08\Polynomial\Cy"
+
+
+polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = True)
+model_CD, model_CY, x_opt_08, poly = polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = False)
+
+plot_surfaces("poly", model_CD, "cd", x_opt_08, X_coded, cd_M08,  ruta_08_poly_cd, poly_transformer= poly)
+plot_surfaces("poly", model_CY, "cy", x_opt_08, X_coded, cy_M08,  ruta_08_poly_cy, poly_transformer= poly)
+
+# Kriging ==========================================================================================
+sm_cd, sm_cy, x_opt = kriging(cd_M08, cy_M08, 0.5, 0.5)
+
+ruta_08_krg_cd = r"Images\Opt_08\Kriging\Cd"
+ruta_08_krg_cy = r"Images\Opt_08\Kriging\Cy"
+
+plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M08, ruta_08_krg_cd)
+plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M08, ruta_08_krg_cy)
+
