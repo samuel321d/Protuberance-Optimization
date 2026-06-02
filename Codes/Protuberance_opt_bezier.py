@@ -13,9 +13,9 @@ import Values
 
 # Plots config
 plt.rcParams.update({
-    "text.usetex": False,      # IMPORTANTE
+    "text.usetex": False,     
     "font.family": "serif",
-    "mathtext.fontset": "cm",  # Computer Modern
+    "mathtext.fontset": "cm", 
     #"font.size": 12,
     "axes.labelsize": 16,
     "axes.titlesize": 18,
@@ -27,42 +27,6 @@ plt.rcParams.update({
 
 
 # DATA FROM SIMULATIONS ==================================================================================
-CD = np.array([
-    0.97255972,
-    0.97236026,
-    0.97336911,
-    0.97783497,
-    0.97429758,
-    0.98081865,
-    0.97831795,
-    0.97453492,
-    0.97785195,
-    0.97787442,
-    0.97208514,
-    0.97704191,
-    0.97429338,
-    0.97593080,
-    0.97462849
-])
-
-CY = np.array([
-    0.00542041,
-    0.00599532,
-    0.00575979,
-    0.00399631,
-    0.00631185,
-    0.00991730,
-    0.00433453,
-    0.00436945,
-    0.00441803,
-    0.00582223,
-    0.00625490,
-    0.00435670,
-    0.00550246,
-    0.00566040,
-    0.00417647
-])
-
 
 X_coded = np.array([
     [-1,-1,-1],
@@ -360,12 +324,12 @@ def kriging(CD, CY, w_cd, w_cy):
     # MOdelo kriging
 
     # Modelo CD
-    sm_cd = KRG(poly = "quadratic", theta0=[0.5]*3, print_global=False)
+    sm_cd = KRG(poly = "quadratic", theta0=[0.5]*3, eval_noise = True, print_global=False)
     sm_cd.set_training_values(X_coded, CD_reshaped)
     sm_cd.train()
 
     # Modelo Cy
-    sm_cy = KRG(poly = "quadratic", theta0=[0.5]*3, print_global=False)
+    sm_cy = KRG(poly = "quadratic", theta0=[0.5]*3, eval_noise = True, print_global=False)
     sm_cy.set_training_values(X_coded, CY_reshaped)
     sm_cy.train()
 
@@ -428,17 +392,18 @@ ruta_06_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimiz
 polynomial_regression(cd_M06, cy_M06, 0.5, 0.5, 4, mode = True)
 model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0.5, 0.5, 4, mode = False)
 
-plot_surfaces("poly", model_CD, "cd", x_opt_06, X_coded, cd_M06,  ruta_06_poly_cd, poly_transformer= poly)
-plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,  ruta_06_poly_cy, poly_transformer= poly)
+#plot_surfaces("poly", model_CD, "cd", x_opt_06, X_coded, cd_M06,  ruta_06_poly_cd, poly_transformer= poly)
+#plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,  ruta_06_poly_cy, poly_transformer= poly)
 
 
 sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
-
+x_opt = np.array(x_opt).reshape(1,-1)
+print(sm_cd.predict_values(x_opt), sm_cy.predict_values(x_opt))
 ruta_06_krg_cd = r"Images\Opt_06\Kriging\Cd"
 ruta_06_krg_cy = r"Images\Opt_06\Kriging\Cy"
 
-plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M06, ruta_06_krg_cd)
-plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06, ruta_06_krg_cy)
+#plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M06, ruta_06_krg_cd)
+#plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06, ruta_06_krg_cy)
 
 # Results M0.8=========================================================================================
 
@@ -452,8 +417,8 @@ ruta_08_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimiz
 polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = True)
 model_CD, model_CY, x_opt_08, poly = polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = False)
 
-plot_surfaces("poly", model_CD, "cd", x_opt_08, X_coded, cd_M08,  ruta_08_poly_cd, poly_transformer= poly)
-plot_surfaces("poly", model_CY, "cy", x_opt_08, X_coded, cy_M08,  ruta_08_poly_cy, poly_transformer= poly)
+#plot_surfaces("poly", model_CD, "cd", x_opt_08, X_coded, cd_M08,  ruta_08_poly_cd, poly_transformer= poly)
+#plot_surfaces("poly", model_CY, "cy", x_opt_08, X_coded, cy_M08,  ruta_08_poly_cy, poly_transformer= poly)
 
 # Kriging ==========================================================================================
 sm_cd, sm_cy, x_opt = kriging(cd_M08, cy_M08, 0.5, 0.5)
@@ -461,6 +426,6 @@ sm_cd, sm_cy, x_opt = kriging(cd_M08, cy_M08, 0.5, 0.5)
 ruta_08_krg_cd = r"Images\Opt_08\Kriging\Cd"
 ruta_08_krg_cy = r"Images\Opt_08\Kriging\Cy"
 
-plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M08, ruta_08_krg_cd)
-plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M08, ruta_08_krg_cy)
+#plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M08, ruta_08_krg_cd)
+#plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M08, ruta_08_krg_cy)
 
