@@ -44,6 +44,7 @@ X_coded = np.array([
     [ 0, 0, 1],
     [ 0, 0,-1],
     [ 0, 0, 0],
+    [0.08269845, 0.03653163, 0.15430238]
 ])
 
 #==================================================================================
@@ -74,23 +75,6 @@ def coded_to_real(x):
 
 def polynomial_regression(CD, CY, w_cd, w_cy, deg, mode):
     # Normalizado
-    X_coded = np.array([
-        [-1,-1,-1],
-        [ 1,-1,-1],
-        [-1, 1,-1],
-        [ 1, 1,-1],
-        [-1,-1, 1],
-        [ 1,-1, 1],
-        [-1, 1, 1],
-        [ 1, 1, 1],
-        [ 1, 0, 0],
-        [-1, 0, 0],
-        [ 0, 1, 0],
-        [ 0,-1, 0],
-        [ 0, 0, 1],
-        [ 0, 0,-1],
-        [ 0, 0, 0],
-    ])
 
     poly = PolynomialFeatures(degree=deg, include_bias=False)
     X_poly = poly.fit_transform(X_coded)
@@ -385,46 +369,46 @@ def kriging(CD, CY, w_cd, w_cy):
 # RESULTADOS OBTENIDOS PARA M 0.6
 cd_M06, cy_M06 = Values.values(M = 0.6)
 
-ruta_06_poly_cd = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_06\Polynomial\Cd"
-ruta_06_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_06\Polynomial\Cy"
+ruta_06_poly_cd = r"C:Images\Opt_06\Polynomial_25_75\Cd"
+ruta_06_poly_cy = r"C:Images\Opt_06\Polynomial_25_75\Cy"
 
 
-polynomial_regression(cd_M06, cy_M06, 0.5, 0.5, 4, mode = True)
-model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0.5, 0.5, 4, mode = False)
+polynomial_regression(cd_M06, cy_M06, 0., 1., 4, mode = True)
+model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0., 1., 4, mode = False)
 
 #plot_surfaces("poly", model_CD, "cd", x_opt_06, X_coded, cd_M06,  ruta_06_poly_cd, poly_transformer= poly)
 #plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,  ruta_06_poly_cy, poly_transformer= poly)
 
 
-sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
+sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0., 1.)
 x_opt = np.array(x_opt).reshape(1,-1)
 print(sm_cd.predict_values(x_opt), sm_cy.predict_values(x_opt))
-ruta_06_krg_cd = r"Images\Opt_06\Kriging\Cd"
-ruta_06_krg_cy = r"Images\Opt_06\Kriging\Cy"
+ruta_06_krg_cd = r"Images\Opt_06\Kriging-25_75\Cd"
+ruta_06_krg_cy = r"Images\Opt_06\Kriging-25_75\Cy"
 
 #plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M06, ruta_06_krg_cd)
 #plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06, ruta_06_krg_cy)
 
 # Results M0.8=========================================================================================
 
-cd_M08, cy_M08 = Values.values(M = 0.8)
+#cd_M08, cy_M08 = Values.values(M = 0.8)
 
 # Polynomial ==========================================================================================
-ruta_08_poly_cd = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_08\Polynomial\Cd"
-ruta_08_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_08\Polynomial\Cy"
+#ruta_08_poly_cd = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_08\Polynomial\Cd"
+#ruta_08_poly_cy = r"C:\Users\Julian Samuel\Documents\GitHub\Protuberance-Optimization\Images\Opt_08\Polynomial\Cy"
 
 
-polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = True)
-model_CD, model_CY, x_opt_08, poly = polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = False)
+#polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = True)
+#model_CD, model_CY, x_opt_08, poly = polynomial_regression(cd_M08, cy_M08, 0.5, 0.5, 4, mode = False)
 
 #plot_surfaces("poly", model_CD, "cd", x_opt_08, X_coded, cd_M08,  ruta_08_poly_cd, poly_transformer= poly)
 #plot_surfaces("poly", model_CY, "cy", x_opt_08, X_coded, cy_M08,  ruta_08_poly_cy, poly_transformer= poly)
 
 # Kriging ==========================================================================================
-sm_cd, sm_cy, x_opt = kriging(cd_M08, cy_M08, 0.5, 0.5)
+#sm_cd, sm_cy, x_opt = kriging(cd_M08, cy_M08, 0.5, 0.5)
 
-ruta_08_krg_cd = r"Images\Opt_08\Kriging\Cd"
-ruta_08_krg_cy = r"Images\Opt_08\Kriging\Cy"
+#ruta_08_krg_cd = r"Images\Opt_08\Kriging\Cd"
+#ruta_08_krg_cy = r"Images\Opt_08\Kriging\Cy"
 
 #plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M08, ruta_08_krg_cd)
 #plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M08, ruta_08_krg_cy)
