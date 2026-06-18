@@ -43,8 +43,8 @@ X_coded = np.array([
     [ 0,-1, 0],
     [ 0, 0, 1],
     [ 0, 0,-1],
-    [ 0, 0, 0],
-    [0.08269845, 0.03653163, 0.15430238]
+    [ 0, 0, 0]
+
 ])
 
 #==================================================================================
@@ -241,15 +241,19 @@ def plot_surfaces(model_type, model, target_name, x_fixed, ccd_points, y_true, s
             )
             ax.legend()
 
-        # Etiquetas, Títulos y Colorbar
+# Etiquetas, Títulos y Colorbar
         fig.colorbar(surf, label=bar_label)
-        ax.set_xlabel(labels[var1])
-        ax.set_ylabel(labels[var2])
-        ax.set_zlabel(bar_label)
+        
+        # Ajustamos el tamaño (fontsize) y la separación (labelpad)
+        # Puedes jugar con el valor de labelpad (ej. 15, 20) según lo necesites
+        ax.set_xlabel(labels[var1], fontsize=18, labelpad=15)
+        ax.set_ylabel(labels[var2], fontsize=18, labelpad=15)
+        ax.set_zlabel(bar_label, fontsize=18, labelpad=15)
 
         ax.set_title(
             f"{labels[var1]} vs {labels[var2]}\n"
-            f"{labels[fixed_var]} fixed = {x_fixed[fixed_var]:.3f}"
+            f"{labels[fixed_var]} fixed = {x_fixed[fixed_var]:.3f}",
+            fontsize=20, pad=20 # También puedes separar y agrandar el título
         )
 
         # Creamos un nombre de archivo dinámico y limpio basado en las variables analizadas
@@ -308,12 +312,12 @@ def kriging(CD, CY, w_cd, w_cy):
     # MOdelo kriging
 
     # Modelo CD
-    sm_cd = KRG(poly = "quadratic", theta0=[0.5]*3, eval_noise = True, print_global=False)
+    sm_cd = KRG(poly = "quadratic", eval_noise = True, print_global=False)
     sm_cd.set_training_values(X_coded, CD_reshaped)
     sm_cd.train()
 
     # Modelo Cy
-    sm_cy = KRG(poly = "quadratic", theta0=[0.5]*3, eval_noise = True, print_global=False)
+    sm_cy = KRG(poly = "quadratic", theta0=[10]*3, eval_noise = True, print_global=False)
     sm_cy.set_training_values(X_coded, CY_reshaped)
     sm_cy.train()
 
@@ -369,25 +373,25 @@ def kriging(CD, CY, w_cd, w_cy):
 # RESULTADOS OBTENIDOS PARA M 0.6
 cd_M06, cy_M06 = Values.values(M = 0.6)
 
-ruta_06_poly_cd = r"C:Images\Opt_06\Polynomial_25_75\Cd"
-ruta_06_poly_cy = r"C:Images\Opt_06\Polynomial_25_75\Cy"
+ruta_06_poly_cd = r"C:Images\Opt_06\Polynomial_50_50\Cd"
+ruta_06_poly_cy = r"C:Images\Opt_06\Polynomial_50_50\Cy"
 
 
-polynomial_regression(cd_M06, cy_M06, 0., 1., 4, mode = True)
-model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0., 1., 4, mode = False)
+#polynomial_regression(cd_M06, cy_M06, 0.5, .5, 4, mode = True)
+#model_CD, model_CY, x_opt_06, poly = polynomial_regression(cd_M06, cy_M06, 0.5, .5, 4, mode = False)
 
 #plot_surfaces("poly", model_CD, "cd", x_opt_06, X_coded, cd_M06,  ruta_06_poly_cd, poly_transformer= poly)
 #plot_surfaces("poly", model_CY, "cy", x_opt_06, X_coded, cy_M06,  ruta_06_poly_cy, poly_transformer= poly)
 
 
-sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0., 1.)
+sm_cd, sm_cy, x_opt = kriging(cd_M06, cy_M06, 0.5, 0.5)
 x_opt = np.array(x_opt).reshape(1,-1)
 print(sm_cd.predict_values(x_opt), sm_cy.predict_values(x_opt))
-ruta_06_krg_cd = r"Images\Opt_06\Kriging-25_75\Cd"
-ruta_06_krg_cy = r"Images\Opt_06\Kriging-25_75\Cy"
+ruta_06_krg_cd = r"Images\Opt_06\Kriging-50_50\Cd"
+ruta_06_krg_cy = r"Images\Opt_06\Kriging-50_50\Cy"
 
-#plot_surfaces("kriging", sm_cd, "cd", x_opt, X_coded, cd_M06, ruta_06_krg_cd)
-#plot_surfaces("kriging", sm_cy, "cy", x_opt, X_coded, cy_M06, ruta_06_krg_cy)
+plot_surfaces("kriging", sm_cd, "cd", x_opt.flatten(), X_coded, cd_M06, ruta_06_krg_cd)
+plot_surfaces("kriging", sm_cy, "cy", x_opt.flatten(), X_coded, cy_M06, ruta_06_krg_cy)
 
 # Results M0.8=========================================================================================
 
