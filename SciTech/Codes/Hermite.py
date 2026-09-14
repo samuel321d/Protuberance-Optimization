@@ -23,60 +23,34 @@ def hermit_bl(X0, X1, X0p, X1p, nps=30, clustering=True):
 
     return xt, xdt
 
+def generate_hermite_paper_fairing(zeta1, zeta2, nps=30, export_filename="protuberance_coords.txt"):
+    x0 = 0.0
+    x1 = 87.0
+    y0 = 0.0
+    y1 = 22.0
+    
+    delta_x = x1 - x0
 
-def generate_hermite_protuberance(params, bounds, nps=30, export_filename="protuberance_coords.txt"):
+    x0p = zeta1 * delta_x
+    x1p = zeta2 * delta_x
 
-    p_clamped = {}
-    for key, val in params.items():
-        if key in bounds:
-            min_val, max_val = bounds[key]
-            p_clamped[key] = np.clip(val, min_val, max_val)
-            if val != p_clamped[key]:
-                print(f"[WARN] El parámetro {key}={val} superó los límites. Ajustado a {p_clamped[key]}")
-        else:
-            p_clamped[key] = val
+    y0p = 0.0
+    y1p = 0.0
 
-    xpts, xdpts = hermit_bl(p_clamped['x0'], p_clamped['xe'], p_clamped['x0p'], p_clamped['xep'], nps, clustering=True)
-    ypts, ydpts = hermit_bl(p_clamped['y0'], p_clamped['ye'], p_clamped['y0p'], p_clamped['yep'], nps, clustering=True)
+    xpts, _ = hermit_bl(x0, x1, x0p, x1p, nps=nps, clustering=True)
+    ypts, _ = hermit_bl(y0, y1, y0p, y1p, nps=nps, clustering=True)
 
     data_out = np.column_stack((xpts, ypts))
-    header_str = "X_m\tY_m"
+    np.savetxt(export_filename, data_out, fmt='%.6f', delimiter='\t', header="X_mm\tY_mm")
 
-    np.savetxt(export_filename, data_out, fmt='%.6f', delimiter='\t', header=header_str)
-    print(f"[INFO] Coordenadas exportadas a: {export_filename}")
-
-    def y_func(x_query):
-        return np.interp(x_query, xpts, ypts)
-
-    return {
-        'x': xpts,
-        'y': ypts,
-        'y_func': y_func,
-        'params_used': p_clamped
-    }
-
+    return {'x': xpts, 'y': ypts, 'zeta1': zeta1, 'zeta2': zeta2}
 
 param_bounds = {
-    'x0':  [0.0, 0.0],
-    'xe':  [0.5, 2.0],
-    'y0':  [0.0, 0.0],
-    'ye':  [0.1, 1.5],
-    'x0p': [0.1, 3.0],
-    'y0p': [0.0, 2.0],
-    'xep': [0.1, 3.0],
-    'yep': [-2.0, 2.0]
+    'zeta1': [0.5, 3.0],
+    'zeta2': [0.5, 3.0]
 }
 
-input_params = {
-    'x0':  ,
-    'xe':  ,
-    'y0':  ,
-    'ye':  ,
-    'x0p': ,
-    'y0p': ,
-    'xep': ,
-    'yep': 
-}
+zeta1_input = 
+zeta2_input = 
 
-nps = 30
-profile = generate_hermite_protuberance(input_params, param_bounds, nps=nps, export_filename="protuberance_coords.txt")
+profile = generate_hermite_paper_fairing(zeta1_input, zeta2_input, nps=30)
