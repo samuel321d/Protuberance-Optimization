@@ -79,7 +79,7 @@ gmsh.option.setNumber("Mesh.Points", 1)
 gmsh.model.mesh.generate(2)
 
 # Guardar malla
-gmsh.write(str(base_dir / "Verification.cgns"))
+gmsh.write(str(base_dir / "Verification.su2"))
 
 # Mostrar resultado en ventana grafica
 #gmsh.fltk.run()

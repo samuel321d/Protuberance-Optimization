@@ -61,7 +61,7 @@ x0 = np.array([0, 1]) # Initial values
 bounds = "no se xd" # Bounds
 M_infty = 1.4 # Freestream Mach number
 
-optim = minimize(objective_function, x0, args = (M_infty), method = "Nelder-Mead", bounds = bounds, options={'xatol': 1e-5, 'disp': False, 'maxiter':10000})
+optim = minimize(objective_function, x0, args = (M_infty), method = "Nelder-Mead", bounds = bounds, options={'xatol': 1e-5, 'disp': True, 'maxiter':10000})
 
 # Verify success
 if not optim.success:
