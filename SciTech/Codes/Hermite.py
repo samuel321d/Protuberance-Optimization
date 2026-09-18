@@ -13,7 +13,7 @@ This file contains the Hermite generation functions, using the two defined param
 import numpy as np
 
 # ===========================================================
-# Functions definition
+# Functions
 # ===========================================================
 def hermit_bl(X0, X1, X0p, X1p, nps=30, clustering=True):
     if clustering:

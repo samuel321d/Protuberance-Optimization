@@ -25,7 +25,9 @@ from pathlib import Path
 from Cp_linearized_equation import Cp_linearized_distribution
 from Hermite import generate_hermite_paper_fairing as Hermite
 
-# Objective function
+# ===========================================================
+# Function
+# ===========================================================
 def objfun(parameters, M_infty):
     """
     Objective function for the optimization.
