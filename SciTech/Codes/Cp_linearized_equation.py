@@ -1,14 +1,25 @@
-######################################
-# Cp from linearized supersonic theory
-######################################
+# ===========================================================
+# Cp Calculation (Potential Flow Theory)
+# ===========================================================
 
+"""
+This file contains a function that generates the Cp distribution over a surface (contained in a .txt).
+This is done by using the linearized perturbed potential flow theory.
+
+"""
+
+# ==========================================================
 # Libraries
+# ==========================================================
+from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 
-# Function definition
+# ==========================================================
+# Function
+# ==========================================================
 def Cp_linearized_distribution(M_infty, config = {}):
     """"
     Calculates the Cp distribution along a curve using the linearized supersonic potential theory.
@@ -29,14 +40,21 @@ def Cp_linearized_distribution(M_infty, config = {}):
         "save_plot" : False,
         "name_plot" : "graphics.png",
         "path"      : "curve.txt",
+        "delimiter" : "\t",
         "skip_rows" : 1
     }
     
     # Read config
     config = {**default_config, **config}
     
+    # Resolve relative paths next to this module while preserving absolute paths.
+    configured_path = Path(config["path"])
+    path = configured_path if configured_path.is_absolute() else Path(__file__).with_name(configured_path)
+    
     # Read curve from path
-    data = np.loadtxt(config["path"], delimiter = ',', skiprows = config["skip_rows"])
+    data = np.loadtxt(path, delimiter = config["delimiter"], skiprows = config["skip_rows"])
+    
+    # Extract curve
     x = data[:, 0]
     curve = data[:, 1]
     
@@ -44,7 +62,7 @@ def Cp_linearized_distribution(M_infty, config = {}):
     slope = np.gradient(curve, x)
     theta = np.arctan(slope)
     
-    # Calculate Cp distribution using linearized supersonic theory
+    # Calculate Cp distribution
     gamma = np.sqrt(M_infty**2 - 1)
     Cp = 2 * theta / gamma
     
@@ -56,10 +74,10 @@ def Cp_linearized_distribution(M_infty, config = {}):
     # Save Cp distribution plot
     if config["save_plot"]:
         plt.figure(figsize = (10, 5))
-        plt.plot(x, Cp, label = "Cp", linestyle = "-", color = "blue", marker = "o")
+        plt.plot(x, Cp, label = "Cp(x)", linestyle = "-", color = "blue", marker = "o")
         plt.plot(x, curve, label = "Curve", color = "black")
         plt.xlabel("x")
-        plt.ylabel("Cp(x) / h(x)")
+        plt.ylabel("Value")
         plt.title("Cp distribution along the curve")
         plt.legend()
         plt.grid()
