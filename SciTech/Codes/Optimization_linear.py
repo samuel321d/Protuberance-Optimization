@@ -21,6 +21,9 @@ from Objective_function import objfun
 from Cp_linearized_equation import Cp_linearized_distribution
 from Hermite import generate_hermite_paper_fairing as Hermite
 
+# ===========================================================
+# Optimization
+# ===========================================================
 # Configuration of optimization
 x0 = np.array([1, 1])               # Initial values
 bounds = ([0.5, 3.0], [0.5, 3.0])   # Bounds
@@ -29,6 +32,9 @@ M_infty = 1.4                       # Freestream Mach number
 # Optimization
 optim = minimize(objfun, x0, args = (M_infty,), method = "Nelder-Mead", bounds = bounds, options={'xatol': 1e-5, 'disp': True, 'maxiter':10000})
 
+# ===========================================================
+# Results
+# ===========================================================
 # Verify results
 if not optim.success:
     # Verify optimization success
