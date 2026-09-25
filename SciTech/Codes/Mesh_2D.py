@@ -37,14 +37,20 @@ def meshgen_2D(a, b, config = {}):
     # Default configuration
     default_config = {
         "filename"         : "Mesh.su2",
-        "wall size"        : 0.005,
+        "wall size"        : 1,
         "layer ratio"      : 1.15,
-        "layer thickness"  : 0.05,
-        "number of layers" : 15
+        "layer thickness"  : 5,
+        "number of layers" : 15,
+        "BOI1"             : 1000,
+        "BOI2"             : 300,
+        "BOI3"             : 100,
+        "global size"      : 2000,
+        "L"                : 3000
     }
     
     # Read config
     config = {**default_config, **config}
+    L = config["L"]
     
     # ===========================================================
     # Initialization
@@ -58,6 +64,7 @@ def meshgen_2D(a, b, config = {}):
     # ===========================================================
     # Abreviation
     geom = gmsh.model.geo
+    msh = gmsh.model.mesh
     
     # Create the hermite curve from input parameters
     path = Path(__file__).with_name("_.txt")
@@ -69,63 +76,110 @@ def meshgen_2D(a, b, config = {}):
     y_hermite = hermite["y"]
     
     # Points
-    p1 = geom.addPoint(-500, 0, 0)
-    p2 = geom.addPoint(x_hermite[-1], 0, 0)
-    p3 = geom.addPoint(500, 0, 0)
-    p4 = geom.addPoint(500, 100, 0)
-    p5 = geom.addPoint(-500, 100, 0)
+    # Far-field
+    p1 = geom.addPoint(0, 12*L, 0)
+    p2 = geom.addPoint(0, 0, 0)
+    p3 = geom.addPoint(0, -12*L, 0)
+    p4 = geom.addPoint(15*L, -12*L, 0)
+    p5 = geom.addPoint(15*L, 12*L, 0)
     
-    # Hermite points
+    Hermite
     hermite_tags = []
     for x, y in zip(x_hermite, y_hermite):
         tag = geom.addPoint(x, y, 0)
         hermite_tags.append(tag)
     
-    # Lines
-    l1 = geom.addLine(p1, hermite_tags[0])
-    lH = geom.addSpline(hermite_tags)
-    l2 = geom.addLine(hermite_tags[-1], p2)
-    l3 = geom.addLine(p2, p3)
-    l4 = geom.addLine(p3, p4)
-    l5 = geom.addLine(p4, p5)
-    l6 = geom.addLine(p5, p1)
+    # Rocket
+    p6 = geom.addPoint(0, 1000, 0)
+    p7 = geom.addPoint(3000, 1000, 0)
+    p8 = geom.addPoint(3000, -1000, 0)
+    p9 = geom.addPoint(0, -1000, 0)
     
-    # Curve loop
-    cl = geom.addCurveLoop([l1, lH, l2, l3, l4, l5, l6])
+    # Lines
+    # Far-field
+    l1 = geom.addCircleArc(p1, p2, p3)
+    l2 = geom.addLine(p3, p4)
+    l3 = geom.addLine(p4, p5)
+    l4 = geom.addLine(p5, p1)
+    
+    # Rocket
+    l5 = geom.addLine(p6, p7)
+    l6 = geom.addLine(p7, p8)
+    l7 = geom.addLine(p8, p9)
+    l8 = geom.addLine(p9, p6)
+    
+    # Rocket curve
+    rocket_list = [l5, l6, l7, l8]
+    
+    # Curve loops
+    cl1 = geom.addCurveLoop([l1, l2, l3, l4])
+    cl2 = geom.addCurveLoop(rocket_list)
     
     # Surface
-    s = geom.addPlaneSurface([cl])
+    s = geom.addPlaneSurface([cl1, cl2])
     
     geom.synchronize()
     
     # Grupos Physical groups
     gmsh.model.addPhysicalGroup(2, [s], 101)
     gmsh.model.setPhysicalName(2, 101, "Domain")
-
-    gmsh.model.addPhysicalGroup(1, [l4, l5, l6], 101)
+    
+    gmsh.model.addPhysicalGroup(1, [l1, l2, l3, l4], 101)
     gmsh.model.setPhysicalName(1, 101, "Farfield")
     
-    gmsh.model.addPhysicalGroup(1, [l1, lH, l2, l3], 102)
+    gmsh.model.addPhysicalGroup(1, rocket_list, 102)
     gmsh.model.setPhysicalName(1, 102, "Wall")
     
     # ===========================================================
     # Meshing
     # ===========================================================
+    gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
+    
+    # BOIs
+    BOI1 = msh.field.add("Box")
+    msh.field.setNumber(BOI1, "XMin", -5.5*L)
+    msh.field.setNumber(BOI1, "XMax", 8.5*L)
+    msh.field.setNumber(BOI1, "YMin", -7*L)
+    msh.field.setNumber(BOI1, "YMax", 7*L)
+    msh.field.setNumber(BOI1, "VIn", config["BOI1"])
+    msh.field.setNumber(BOI1, "Thickness", config["BOI1"])
+    
+    BOI2 = msh.field.add("Box")
+    msh.field.setNumber(BOI2, "XMin", -3.5*L)
+    msh.field.setNumber(BOI2, "XMax", 6.5*L)
+    msh.field.setNumber(BOI2, "YMin", -5*L)
+    msh.field.setNumber(BOI2, "YMax", 5*L)
+    msh.field.setNumber(BOI2, "VIn", config["BOI2"])
+    msh.field.setNumber(BOI2, "Thickness", config["BOI2"])
+    
+    BOI3 = msh.field.add("Box")
+    msh.field.setNumber(BOI3, "XMin", -1.5*L)
+    msh.field.setNumber(BOI3, "XMax", 4.5*L)
+    msh.field.setNumber(BOI3, "YMin", -2*L)
+    msh.field.setNumber(BOI3, "YMax", 2*L)
+    msh.field.setNumber(BOI3, "VIn", config["BOI3"])
+    msh.field.setNumber(BOI3, "Thickness", config["BOI3"])
+    
+    # Combine BOIs
+    min = msh.field.add("Min")
+    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3])
+    msh.field.setAsBackgroundMesh(min)
+    
     # Inflation layers field
-    BL = gmsh.model.mesh.field.add("BoundaryLayer")
+    BL = msh.field.add("BoundaryLayer")
     
     # Curves to grown on layers
-    gmsh.model.mesh.field.setNumbers(BL, "CurvesList", [l1, lH, l2, l3])
+    msh.field.setNumbers(BL, "CurvesList", rocket_list)
     
     # Inflation layers settings
-    gmsh.model.mesh.field.setNumber(BL, "hwall_n", config["wall size"])
-    gmsh.model.mesh.field.setNumber(BL, "ratio", config["layer ratio"])
-    gmsh.model.mesh.field.setNumber(BL, "thickness", config["layer thickness"])
-    gmsh.model.mesh.field.setNumber(BL, "NbLayers", config["number of layers"])
-    gmsh.model.mesh.field.setNumber(BL, "Quads", 1)
-    gmsh.model.mesh.field.setAsBoundaryLayer(BL)
+    msh.field.setNumber(BL, "hwall_n", config["wall size"])
+    msh.field.setNumber(BL, "ratio", config["layer ratio"])
+    msh.field.setNumber(BL, "thickness", config["layer thickness"])
+    msh.field.setNumber(BL, "NbLayers", config["number of layers"])
+    msh.field.setNumber(BL, "Quads", 1)
+    msh.field.setAsBoundaryLayer(BL)
     
-    gmsh.model.mesh.generate(2)
+    msh.generate(2)
     
     # ===========================================================
     # Save results
@@ -146,17 +200,3 @@ def meshgen_2D(a, b, config = {}):
 # ===========================================================
 if __name__ == "__main__":
     meshgen_2D(1, 1, config = {"filename" : "Mesh.msh"})
-
-if False:
-    # Sizing
-    D = gmsh.model.mesh.field.add("Distance")
-    gmsh.model.mesh.field.setNumbers(D, "CurvesList", [l1, l2, l3])  # en 3D usas SurfacesList
-
-    T = gmsh.model.mesh.field.add("Threshold")
-    gmsh.model.mesh.field.setNumber(T, "InField", D)
-    gmsh.model.mesh.field.setNumber(T, "SizeMin", 0.01)   # tamaño cerca de la superficie
-    gmsh.model.mesh.field.setNumber(T, "SizeMax", 0.02)   # tamaño lejos
-    gmsh.model.mesh.field.setNumber(T, "DistMin", 0.05)   # hasta dónde aplica SizeMin
-    gmsh.model.mesh.field.setNumber(T, "DistMax", 0.30)   # a partir de dónde aplica SizeMax
-
-    gmsh.model.mesh.field.setAsBackgroundMesh(T)
