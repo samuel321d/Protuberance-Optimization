@@ -18,6 +18,9 @@ path/ pvpython Paraview_post.py
 
 def paraview_postprocessing(input_file_name, output_file_name):
     #### disable automatic camera reset on 'Show'
+    #==================================================================================
+    # Initial set up and vtu file import
+    #==================================================================================
     paraview.simple._DisableFirstRenderCameraReset()
 
     # create a new 'XML Unstructured Grid Reader'
@@ -50,37 +53,137 @@ def paraview_postprocessing(input_file_name, output_file_name):
 
     # get the material library
     materialLibrary1 = GetMaterialLibrary()
-
     # update the view to ensure updated data information
     renderView1.Update()
 
     # change representation type
     surface_flowvtuDisplay.SetRepresentationType('Wireframe')
+    #==================================================================================
+    
+    #==================================================================================
+    #Clip functions to limit hermite region
+    #==================================================================================
+
+    # 3 main clips are described here
+    # Clips are defined by an ORIGIN point and a NORMAL vector.
+    # create a new 'Clip'
+    clip1 = Clip(registrationName='Clip1', Input=surface_flowvtu)
+
+    # Properties modified on clip1.ClipType
+    #clip1.ClipType.Normal = [0.0, -1.0, 0.0]
+    clip1.ClipType.Set(
+        Origin=[0.0, 1.0, 0.0],
+        Normal=[-1.0, 0.0, 0.0],
+    )
+
+    # show data in view
+    clip1Display = Show(clip1, renderView1, 'UnstructuredGridRepresentation')
+
+    # trace defaults for the display properties.
+    clip1Display.Representation = 'Surface'
+
+    # update the view to ensure updated data information
+    renderView1.Update()
+
+    # set active source
+    SetActiveSource(surfacevtu)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip1.ClipType)
+
+    # create a new 'Clip'
+    clip2 = Clip(registrationName='Clip2', Input=surface_flowvtu)
+
+    # Properties modified on clip2.ClipType
+    #clip2.ClipType.Origin = [0.0, 1.0, 0.0]
+    clip2.ClipType.Set(
+    Origin=[0.0, 1.0, 0.0],
+    Normal=[1.0, 0.0, 0.0],
+    )
+    # show data in view
+    clip2Display = Show(clip2, renderView1, 'UnstructuredGridRepresentation')
+
+    # trace defaults for the display properties.
+    clip2Display.Representation = 'Surface'
+
+    # update the view to ensure updated data information
+    renderView1.Update()
+
+    # set active source
+    SetActiveSource(surfacevtu)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip2.ClipType)
+
+    # create a new 'Clip'
+    clip3 = Clip(registrationName='Clip3', Input=surface_flowvtu)
+
+    # Properties modified on clip3.ClipType
+    clip3.ClipType.Set(
+        Origin=[3.0, 0.0, 0.0],
+        Normal=[-1.0, 0.0, 0.0],
+    )
+
+    # show data in view
+    clip3Display = Show(clip3, renderView1, 'UnstructuredGridRepresentation')
+
+    # trace defaults for the display properties.
+    clip3Display.Representation = 'Surface'
+
+    # update the view to ensure updated data information
+    renderView1.Update()
+    #==================================================================================
+    # Integrate Cp over protuberance
+    #==================================================================================
+    integrateVariables1 = IntegrateVariables(registrationName='IntegrateVariables1', Input=clip3)
+
+    #==================================================================================
+    # Cp distriution export in CSV format
+    #==================================================================================
+        
+
+    # find source
+    clip3 = FindSource('Clip3')
+
+    # set active source
+    SetActiveSource(clip3)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    ShowInteractiveWidgets(proxy=clip3.ClipType)
+
+    # get active view
+    renderView1 = GetActiveViewOrCreate('RenderView')
+
+    # get display properties
+    clip3Display = GetRepresentation(clip3, view=renderView1)
 
     # get layout
     layout1 = GetLayout()
 
     # split cell
-    layout1.SplitHorizontal(0, 0.5)
+    layout1.SplitHorizontal(1, 0.5)
 
     # set active view
     SetActiveView(None)
 
     # Create a new 'SpreadSheet View'
-    spreadSheetView1 = CreateView('SpreadSheetView')
-    spreadSheetView1.Set(
+    spreadSheetView2 = CreateView('SpreadSheetView')
+    spreadSheetView2.Set(
         ColumnToSort='',
         BlockSize=1024,
     )
 
     # show data in view
-    surface_flowvtuDisplay_1 = Show(surface_flowvtu, spreadSheetView1, 'SpreadSheetRepresentation')
+    clip3Display_1 = Show(clip3, spreadSheetView2, 'SpreadSheetRepresentation')
 
     # assign view to a particular cell in the layout
-    AssignViewToLayout(view=spreadSheetView1, layout=layout1, hint=2)
+    AssignViewToLayout(view=spreadSheetView2, layout=layout1, hint=4)
+
+
+
 
     # export view
-    ExportView(output_file_name, view=spreadSheetView1, FrameWindow=[0, 0])
+    ExportView(output_file_name, view=spreadSheetView2, FrameWindow=[0, 0])
 
     #================================================================
     # addendum: following script captures some of the application
@@ -104,7 +207,7 @@ def paraview_postprocessing(input_file_name, output_file_name):
         CameraParallelScale=1.5008331020051848,
     )
 
-    return output_file_name
+    return output_file_name, integrateVariables1
     ##--------------------------------------------
     ## You may need to add some code at the end of this python script depending on your usage, eg:
     #
