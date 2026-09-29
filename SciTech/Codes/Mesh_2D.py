@@ -12,7 +12,10 @@ This file contains the function to generate the 2D mesh of the Hermite Curve on 
 # ===========================================================
 # 3rd party imports
 from pathlib import Path
+from math import radians
 import gmsh
+import ezdxf
+import numpy as np
 
 # Personal imports
 from Hermite import generate_hermite_paper_fairing as Hermite
@@ -31,26 +34,32 @@ def meshgen_2D(a, b, config = {}):
         config: Dictionary containing configuration options
     
     Returns:
+        h_bc: List with hermite curve boundary points
         .su2 file containing mesh
     """
     
     # Default configuration
     default_config = {
-        "filename"         : "Mesh.su2",
-        "wall size"        : 1,
-        "layer ratio"      : 1.15,
-        "layer thickness"  : 5,
-        "number of layers" : 15,
-        "BOI1"             : 1000,
-        "BOI2"             : 300,
-        "BOI3"             : 100,
-        "global size"      : 2000,
-        "L"                : 3000
+        "filename"              : "Mesh.su2",
+        "wall size"             : 1,
+        "layer ratio"           : 1.15,
+        "layer thickness"       : 5,
+        "number of layers"      : 15,
+        "use boundary layer"    : True,
+        "BOI1"                  : 1000,
+        "BOI2"                  : 300,
+        "BOI3"                  : 100,
+        "global size"           : 2000,
+        "protuberance location" : 1000,
+        "alpha"                 : radians(0),
+        "r"                     : 174,
+        "L"                     : 3000
     }
     
     # Read config
     config = {**default_config, **config}
     L = config["L"]
+    r = config["r"]
     
     # ===========================================================
     # Initialization
@@ -63,7 +72,7 @@ def meshgen_2D(a, b, config = {}):
     # Geometry
     # ===========================================================
     # Abreviation
-    geom = gmsh.model.geo
+    geom = gmsh.model.occ
     msh = gmsh.model.mesh
     
     # Create the hermite curve from input parameters
@@ -71,29 +80,83 @@ def meshgen_2D(a, b, config = {}):
     hermite = Hermite(a, b, export_filename = str(path))
     path.unlink()
     
+    # Read rocket surface
+    path = Path(__file__).with_name("Rocket_points.dxf")
+    doc = ezdxf.readfile(path)
+    msp = doc.modelspace()
+    
+    points = []
+    print(msp)
+    for entity in msp:
+        
+        # ----------------
+        # LINE 
+        # ----------------
+        if entity.dxftype() == "LINE":
+            
+            p1 = entity.dxf.start
+            p2 = entity.dxf.end
+            
+            points.append((p1.x, p1.y))
+            points.append((p2.x, p2.y))
+            
+        # ----------------
+        # ARC
+        # ----------------
+        elif entity.dxftype() == "ARC":
+            
+            center = entity.dxf.center
+            radius = entity.dxf.radius
+            
+            theta1 = np.deg2rad(entity.dxf.start_angle)
+            theta2 = np.deg2rad(entity.dxf.end_angle)
+            
+            theta = np.linspace(theta1, theta2, 50)
+            
+            for t in theta:
+                x = center.x + radius * np.cos(t)
+                y = center.y + radius * np.sin(t)
+                
+                points.append((x, y))
+                
+        # ----------------
+        # SPLINE
+        # ----------------
+        elif entity.dxftype() == "SPLINE":
+            
+            spline_points = entity.flattening(0.01)
+            
+            for p in spline_points:
+                points.append((p.x, p.y))
+    rocket_coords = np.array(points)
+    
+    x_rocket = rocket_coords[:, 0]
+    y_rocket = rocket_coords[:, 1]
+    
     # Extract points of the Hermite
     x_hermite = hermite["x"]
     y_hermite = hermite["y"]
     
     # Points
     # Far-field
-    p1 = geom.addPoint(0, 12*L, 0)
+    p1 = geom.addPoint(0, -12*L, 0)
     p2 = geom.addPoint(0, 0, 0)
-    p3 = geom.addPoint(0, -12*L, 0)
-    p4 = geom.addPoint(15*L, -12*L, 0)
-    p5 = geom.addPoint(15*L, 12*L, 0)
+    p3 = geom.addPoint(0, 12*L, 0)
+    p4 = geom.addPoint(15*L, 12*L, 0)
+    p5 = geom.addPoint(15*L, -12*L, 0)
     
-    Hermite
+    # Rocket 
+    rocket_tags = []
+    for x, y in zip(x_rocket, y_rocket):
+        tag = geom.addPoint(x + 3200, y, 0)
+        rocket_tags.append(tag)
+    
+    # Hermite 
     hermite_tags = []
     for x, y in zip(x_hermite, y_hermite):
-        tag = geom.addPoint(x, y, 0)
+        tag = geom.addPoint(x + config["protuberance location"], y + max(y_rocket), 0)
         hermite_tags.append(tag)
-    
-    # Rocket
-    p6 = geom.addPoint(0, 1000, 0)
-    p7 = geom.addPoint(3000, 1000, 0)
-    p8 = geom.addPoint(3000, -1000, 0)
-    p9 = geom.addPoint(0, -1000, 0)
+    p6 = geom.addPoint(x_hermite[-1] + config["protuberance location"], y_hermite[0] + max(y_rocket), 0)
     
     # Lines
     # Far-field
@@ -103,31 +166,56 @@ def meshgen_2D(a, b, config = {}):
     l4 = geom.addLine(p5, p1)
     
     # Rocket
-    l5 = geom.addLine(p6, p7)
-    l6 = geom.addLine(p7, p8)
-    l7 = geom.addLine(p8, p9)
-    l8 = geom.addLine(p9, p6)
+    lr = geom.addBSpline(rocket_tags)
+    lf = geom.addLine(rocket_tags[-1], rocket_tags[0])
+    
+    # Hermite
+    lh = geom.addBSpline(hermite_tags)
+    l5 = geom.addLine(hermite_tags[-1], p6)
+    l6 = geom.addLine(p6, hermite_tags[0])
     
     # Rocket curve
-    rocket_list = [l5, l6, l7, l8]
+    rocket_list = [lr, lf]
+    
+    rotate_list = [lr, lf, lh, l5, l6]
+    
+    # Rotate rocket
+    dim_tags_rocket = [(1, tag) for tag in rotate_list]
+    geom.rotate(dim_tags_rocket, 0, 0, 0, 0, 0, 1, config["alpha"])
     
     # Curve loops
     cl1 = geom.addCurveLoop([l1, l2, l3, l4])
     cl2 = geom.addCurveLoop(rocket_list)
+    cl3 = geom.addCurveLoop([lh, l5, l6])
     
     # Surface
-    s = geom.addPlaneSurface([cl1, cl2])
+    s = geom.addPlaneSurface([cl1])
+    s_rocket = geom.addPlaneSurface([cl2])
+    # s_hermite = geom.addPlaneSurface([cl3])
+    
+    # fusion, _ = geom.fuse([(2, s_rocket)], [(2, s_hermite)])
+    # rocket_surfaces = [(dim, tag) for dim, tag in fusion if dim == 2]
     
     geom.synchronize()
     
-    # Grupos Physical groups
-    gmsh.model.addPhysicalGroup(2, [s], 101)
+    # cut_surfaces, _ = geom.cut([(2, s)], rocket_surfaces)
+    cut_surfaces, _ = geom.cut([(2, s)], [(2, s_rocket)])
+    domain_surfaces = [(dim, tag) for dim, tag in cut_surfaces if dim == 2]
+    
+    geom.synchronize()
+    
+    all_boundary = [c[1] for surface in domain_surfaces for c in gmsh.model.getBoundary([surface], combined=False, oriented=False)]
+    farfield_curves = [l1, l2, l3, l4]
+    wall_curves = [curve for curve in all_boundary if curve not in farfield_curves]
+    
+    # Physical groups
+    gmsh.model.addPhysicalGroup(2, [tag for _, tag in domain_surfaces], 101)
     gmsh.model.setPhysicalName(2, 101, "Domain")
     
-    gmsh.model.addPhysicalGroup(1, [l1, l2, l3, l4], 101)
+    gmsh.model.addPhysicalGroup(1, farfield_curves, 101)
     gmsh.model.setPhysicalName(1, 101, "Farfield")
     
-    gmsh.model.addPhysicalGroup(1, rocket_list, 102)
+    gmsh.model.addPhysicalGroup(1, wall_curves, 102)
     gmsh.model.setPhysicalName(1, 102, "Wall")
     
     # ===========================================================
@@ -166,19 +254,24 @@ def meshgen_2D(a, b, config = {}):
     msh.field.setAsBackgroundMesh(min)
     
     # Inflation layers field
-    BL = msh.field.add("BoundaryLayer")
+    use_boundary_layer = bool(config.get("use boundary layer", False))
+    if use_boundary_layer:
+        BL = msh.field.add("BoundaryLayer")
+        
+        # Curves to grown on layers
+        msh.field.setNumbers(BL, "CurvesList", wall_curves)
+        
+        # Inflation layers settings
+        msh.field.setNumber(BL, "hwall_n", config["wall size"])
+        msh.field.setNumber(BL, "ratio", config["layer ratio"])
+        msh.field.setNumber(BL, "thickness", config["layer thickness"])
+        msh.field.setNumber(BL, "NbLayers", config["number of layers"])
+        msh.field.setNumber(BL, "Quads", 1)
+        msh.field.setAsBoundaryLayer(BL)
+    else:
+        print("Info: Boundary layer disabled (use boundary layer = True to enable it). This geometry is stable without inflation layers in Gmsh.")
     
-    # Curves to grown on layers
-    msh.field.setNumbers(BL, "CurvesList", rocket_list)
-    
-    # Inflation layers settings
-    msh.field.setNumber(BL, "hwall_n", config["wall size"])
-    msh.field.setNumber(BL, "ratio", config["layer ratio"])
-    msh.field.setNumber(BL, "thickness", config["layer thickness"])
-    msh.field.setNumber(BL, "NbLayers", config["number of layers"])
-    msh.field.setNumber(BL, "Quads", 1)
-    msh.field.setAsBoundaryLayer(BL)
-    
+    # Generate mesh
     msh.generate(2)
     
     # ===========================================================
