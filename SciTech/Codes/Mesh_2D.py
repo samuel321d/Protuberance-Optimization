@@ -42,24 +42,22 @@ def meshgen_2D(a, b, config = {}):
     default_config = {
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
-        "layer ratio"           : 1.15,
-        "layer thickness"       : 5,
-        "number of layers"      : 15,
+        "layer ratio"           : 1.2,
+        "layer thickness"       : 9.75e-7*1000,
+        "number of layers"      : 40,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
         "BOI2"                  : 300,
         "BOI3"                  : 100,
         "global size"           : 2000,
-        "protuberance location" : 1000,
-        "alpha"                 : radians(0),
-        "r"                     : 174,
+        "protuberance location" : 1500,
+        "alpha"                 : radians(6),
         "L"                     : 3000
     }
     
     # Read config
     config = {**default_config, **config}
     L = config["L"]
-    r = config["r"]
     
     # ===========================================================
     # Initialization
@@ -88,7 +86,6 @@ def meshgen_2D(a, b, config = {}):
     points = []
     print(msp)
     for entity in msp:
-        
         # ----------------
         # LINE 
         # ----------------
@@ -148,15 +145,19 @@ def meshgen_2D(a, b, config = {}):
     # Rocket 
     rocket_tags = []
     for x, y in zip(x_rocket, y_rocket):
-        tag = geom.addPoint(x + 3200, y, 0)
+        tag = geom.addPoint(x + 3200, y, 0, config["wall size"])
         rocket_tags.append(tag)
     
     # Hermite 
     hermite_tags = []
     for x, y in zip(x_hermite, y_hermite):
-        tag = geom.addPoint(x + config["protuberance location"], y + max(y_rocket), 0)
+        tag = geom.addPoint(x + config["protuberance location"], y + max(y_rocket), 0, config["wall size"]/2)
         hermite_tags.append(tag)
-    p6 = geom.addPoint(x_hermite[-1] + config["protuberance location"], y_hermite[0] + max(y_rocket), 0)
+    p6 = geom.addPoint(x_hermite[-1] + config["protuberance location"], y_hermite[0] + max(y_rocket), 0, config["wall size"]/2)
+    hermite_points = hermite_tags + [p6]
+    
+    # Displace points (tolerance)
+    geom.translate([(0, tag) for tag in hermite_points], 0, -1, 0)
     
     # Lines
     # Far-field
@@ -174,56 +175,64 @@ def meshgen_2D(a, b, config = {}):
     l5 = geom.addLine(hermite_tags[-1], p6)
     l6 = geom.addLine(p6, hermite_tags[0])
     
-    # Rocket curve
-    rocket_list = [lr, lf]
-    
-    rotate_list = [lr, lf, lh, l5, l6]
-    
-    # Rotate rocket
-    dim_tags_rocket = [(1, tag) for tag in rotate_list]
-    geom.rotate(dim_tags_rocket, 0, 0, 0, 0, 0, 1, config["alpha"])
-    
     # Curve loops
     cl1 = geom.addCurveLoop([l1, l2, l3, l4])
-    cl2 = geom.addCurveLoop(rocket_list)
+    cl2 = geom.addCurveLoop([lr, lf])
     cl3 = geom.addCurveLoop([lh, l5, l6])
     
     # Surface
     s = geom.addPlaneSurface([cl1])
     s_rocket = geom.addPlaneSurface([cl2])
-    # s_hermite = geom.addPlaneSurface([cl3])
+    s_hermite = geom.addPlaneSurface([cl3])
     
-    # fusion, _ = geom.fuse([(2, s_rocket)], [(2, s_hermite)])
-    # rocket_surfaces = [(dim, tag) for dim, tag in fusion if dim == 2]
+    # Fuse rocket w Hermite
+    fusion, _ = geom.fuse([(2, s_rocket)], [(2, s_hermite)])
     
-    geom.synchronize()
-    
-    # cut_surfaces, _ = geom.cut([(2, s)], rocket_surfaces)
-    cut_surfaces, _ = geom.cut([(2, s)], [(2, s_rocket)])
-    domain_surfaces = [(dim, tag) for dim, tag in cut_surfaces if dim == 2]
+    # Rotate rocket
+    geom.rotate(fusion, 0, 0, 0, 0, 0, 1, config["alpha"])
+    r_xmin, r_ymin, _, r_xmax, r_ymax, _ = gmsh.model.occ.getBoundingBox(2, fusion[0][1]) # Bounding box
     
     geom.synchronize()
     
-    all_boundary = [c[1] for surface in domain_surfaces for c in gmsh.model.getBoundary([surface], combined=False, oriented=False)]
-    farfield_curves = [l1, l2, l3, l4]
-    wall_curves = [curve for curve in all_boundary if curve not in farfield_curves]
+    # Cut rocket from domain
+    domain_dimTag, _ = geom.cut([(2, s)], fusion)
+    
+    geom.synchronize()
+    
+    fluid_domain = domain_dimTag[0]
+    
+    # Obtain boundaries
+    boundary_curves = gmsh.model.getBoundary([fluid_domain], combined=False, oriented=False)
+    
+    farfield_curves = []
+    wall_curves = []
+    eps = 1e-3  # Tol
+    
+    for dim, c_tag in boundary_curves:
+        c_xmin, c_ymin, _, c_xmax, c_ymax, _ = gmsh.model.getBoundingBox(dim, c_tag)
+        
+        is_inside_rocket = (
+            c_xmin >= (r_xmin - eps) and
+            c_xmax <= (r_xmax + eps) and
+            c_ymin >= (r_ymin - eps) and
+            c_ymax <= (r_ymax + eps)
+        )
+        
+        if is_inside_rocket:
+            wall_curves.append(c_tag)
+        else:
+            farfield_curves.append(c_tag)
     
     # Physical groups
-    gmsh.model.addPhysicalGroup(2, [tag for _, tag in domain_surfaces], 101)
-    gmsh.model.setPhysicalName(2, 101, "Domain")
-    
-    gmsh.model.addPhysicalGroup(1, farfield_curves, 101)
-    gmsh.model.setPhysicalName(1, 101, "Farfield")
-    
-    gmsh.model.addPhysicalGroup(1, wall_curves, 102)
-    gmsh.model.setPhysicalName(1, 102, "Wall")
+    gmsh.model.addPhysicalGroup(1, farfield_curves, name = "Farfield")
+    gmsh.model.addPhysicalGroup(1, wall_curves, name = "Wall")
     
     # ===========================================================
     # Meshing
     # ===========================================================
     gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
     
-    # BOIs
+    # # BOIs
     BOI1 = msh.field.add("Box")
     msh.field.setNumber(BOI1, "XMin", -5.5*L)
     msh.field.setNumber(BOI1, "XMax", 8.5*L)
@@ -253,7 +262,7 @@ def meshgen_2D(a, b, config = {}):
     msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3])
     msh.field.setAsBackgroundMesh(min)
     
-    # Inflation layers field
+    # # Inflation layers field
     use_boundary_layer = bool(config.get("use boundary layer", False))
     if use_boundary_layer:
         BL = msh.field.add("BoundaryLayer")
@@ -262,14 +271,13 @@ def meshgen_2D(a, b, config = {}):
         msh.field.setNumbers(BL, "CurvesList", wall_curves)
         
         # Inflation layers settings
-        msh.field.setNumber(BL, "hwall_n", config["wall size"])
-        msh.field.setNumber(BL, "ratio", config["layer ratio"])
-        msh.field.setNumber(BL, "thickness", config["layer thickness"])
+        msh.field.setNumber(BL, "hwall_n", config["layer thickness"])
+        msh.field.setNumber(BL, "Ratio", config["layer ratio"])
         msh.field.setNumber(BL, "NbLayers", config["number of layers"])
         msh.field.setNumber(BL, "Quads", 1)
         msh.field.setAsBoundaryLayer(BL)
     else:
-        print("Info: Boundary layer disabled (use boundary layer = True to enable it). This geometry is stable without inflation layers in Gmsh.")
+        print("Inflation Layers are desactivated")
     
     # Generate mesh
     msh.generate(2)
@@ -278,6 +286,8 @@ def meshgen_2D(a, b, config = {}):
     # Save results
     # ===========================================================
     # Visualization options
+    gmsh.option.setNumber("Geometry.Curves", 1)
+    gmsh.option.setNumber("Geometry.Surfaces", 1)
     gmsh.option.setNumber("Mesh.SurfaceFaces", 1)
     gmsh.option.setNumber("Mesh.Points", 1)
     
@@ -292,4 +302,19 @@ def meshgen_2D(a, b, config = {}):
 # Test
 # ===========================================================
 if __name__ == "__main__":
-    meshgen_2D(1, 1, config = {"filename" : "Mesh.msh"})
+    config = {
+        "filename"              : "Mesh.msh",
+        "wall size"             : 10,
+        "layer thickness"       : 1.95e-4*1000,
+        "layer ratio"           : 1.2,
+        "number of layers"      : 40,
+        "BOI1"                  : 2000,
+        "BOI2"                  : 1000,
+        "BOI3"                  : 500,
+        "global size"           : 4000,
+        "use boundary layer"    : True,
+        "alpha"                 : radians(6)
+    }
+    
+    meshgen_2D(1, 1, config = config)
+    
