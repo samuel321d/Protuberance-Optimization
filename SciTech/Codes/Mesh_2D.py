@@ -318,7 +318,3 @@ if __name__ == "__main__":
     
     meshgen_2D(1, 1, config = config)
     
-    # Convert format
-    import meshio
-    meeshio.write(Path(__file__).parent / "mesh.vtu", path)
-    
