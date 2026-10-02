@@ -224,6 +224,7 @@ def meshgen_2D(a, b, config = {}):
             farfield_curves.append(c_tag)
     
     # Physical groups
+    gmsh.model.addPhysicalGroup(2, [fluid_domain[1]], name = "Fluid")
     gmsh.model.addPhysicalGroup(1, farfield_curves, name = "Farfield")
     gmsh.model.addPhysicalGroup(1, wall_curves, name = "Wall")
     
@@ -303,15 +304,15 @@ def meshgen_2D(a, b, config = {}):
 # ===========================================================
 if __name__ == "__main__":
     config = {
-        "filename"              : "Mesh.msh",
-        "wall size"             : 10,
-        "layer thickness"       : 1.95e-4*1000,
+        "filename"              : "Mesh.su2",
+        "wall size"             : 1,
+        "layer thickness"       : 1.95e-7*1000,
         "layer ratio"           : 1.2,
         "number of layers"      : 40,
-        "BOI1"                  : 2000,
-        "BOI2"                  : 1000,
-        "BOI3"                  : 500,
-        "global size"           : 4000,
+        "BOI1"                  : 1000,
+        "BOI2"                  : 5000,
+        "BOI3"                  : 100,
+        "global size"           : 2000,
         "use boundary layer"    : True,
         "alpha"                 : radians(6)
     }
