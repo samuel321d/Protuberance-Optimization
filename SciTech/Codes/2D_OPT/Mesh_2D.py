@@ -11,6 +11,7 @@ This file contains the function to generate the 2D mesh of the Hermite Curve on 
 # Libraries
 # ===========================================================
 # 3rd party imports
+import os
 from pathlib import Path
 from math import radians
 import gmsh
@@ -23,7 +24,7 @@ from Hermite import generate_hermite_paper_fairing as Hermite
 # ===========================================================
 # Function
 # ===========================================================
-def meshgen_2D(a, b, config = {}):
+def meshgen_2D(a, b, config = {}, folder = None):
     """
     Function to generate a mesh of the Hermite curve mounted on the rocket.
     Includes the generation of inflation layers.
@@ -42,7 +43,7 @@ def meshgen_2D(a, b, config = {}):
     default_config = {
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
-        "layer ratio"           : 1.2,
+        "layer ratio"           : 1.22,
         "layer thickness"       : 9.75e-7*1000,
         "number of layers"      : 40,
         "use boundary layer"    : True,
@@ -51,7 +52,7 @@ def meshgen_2D(a, b, config = {}):
         "BOI3"                  : 100,
         "global size"           : 2000,
         "protuberance location" : 1500,
-        "alpha"                 : radians(6),
+        "alpha"                 : radians(0),
         "L"                     : 3000
     }
     
@@ -292,23 +293,23 @@ def meshgen_2D(a, b, config = {}):
     gmsh.option.setNumber("Mesh.Points", 1)
     
     # Read save directory
-    path = Path(__file__).parent / config["filename"]
+    path = os.path.join(folder, config["filename"]) 
     gmsh.write(str(path))
-    
+    gmsh.fltk.run()
     # Finalize
     gmsh.finalize()
 
 # ===========================================================
 # Test
 # ===========================================================
-
+"""
 if __name__ == "__main__":
     config = {
-        "filename"              : "Mesh.msh",
+        "filename"              : "Mesh.su2",
         "wall size"             : 10,
-        "layer thickness"       : 1.95e-4*1000,
+        "layer thickness"       : 1.68e-3,
         "layer ratio"           : 1.2,
-        "number of layers"      : 40,
+        "number of layers"      : 45,
         "BOI1"                  : 2000,
         "BOI2"                  : 1000,
         "BOI3"                  : 500,
@@ -316,6 +317,7 @@ if __name__ == "__main__":
         "use boundary layer"    : True,
         "alpha"                 : radians(6)
     }
-    
-meshgen_2D(1, 1, config = config)
+    """
+meshgen_2D(1, 1, config = {"filename" : "Mesh.su2"}, folder = os.getcwd())
+
     
