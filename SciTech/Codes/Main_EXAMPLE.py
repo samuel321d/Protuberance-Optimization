@@ -23,8 +23,8 @@ import gmsh
 import numpy as np
 import subprocess
 import pandas as pd
-
-from Paraview_post import paraview_postprocessing
+from Mesh_2D_copia import meshgen_2D
+#from Paraview_post import paraview_postprocessing
 # Here go functions related to hermite, mesh scripts and more
 # ==========================================================
 
@@ -36,32 +36,30 @@ os.chdir(path)
 
 # ==============================================================
 # Functions reprensenting the Hermite generation and mesh generation are called here
-def hermite(x,y):
-    """
-    Hermite function example
-    """
-    if x == 1 and y == 1:
-        return True
-    else:
-        return None
-
-def mesh_generation(file_name, x, y):
-    """
-    GMSH mesh generation function
-    Input: Hermite function parameters
-    Output: GMSH mesh file
-    """
-    if hermite(x, y):
-        return os.path.join(path, file_name)
 
 
-def run_solver(config_file, output_files_path):
+def modify_params_cfg(archivo_cfg, parametro, nuevo_valor):
+    with open(archivo_cfg, 'r') as f:
+        lineas = f.readlines()
+
+    with open(archivo_cfg, 'w') as f:
+        for linea in lineas:
+            # Si la línea define ese parámetro (ignorando comentarios y espacios)
+            if linea.strip().startswith(parametro + '='):
+                f.write(f"{parametro}= {nuevo_valor}\n")
+            else:
+                f.write(linea)
+
+
+def run_solver(config_file, output_files_path, n_processors=4, path=None):
     """
     Input =  configuration file with instructions for SU2 
     output = Output files path for postprocessing in gmsh
     """
+    modify_params_cfg(config_file, "MESH_FILENAME", path)
+
     result = subprocess.run(
-        ["mpirun ", "-n ", "4 ","SU2_CFD ", config_file],
+        ["mpiexec.exe ", "-n", str(n_processors), "SU2_CFD", config_file],
         capture_output=True,
         text=True
     )
@@ -69,9 +67,10 @@ def run_solver(config_file, output_files_path):
     print(result.stdout)
     if result.returncode != 0:
         print("Error:", result.stderr)
-
-    Surface_output_file = os.path.join(output_files_path, "surface_flow.vtu")
     
+    
+    Surface_output_file = os.path.join(output_files_path, "surface_flow.vtu")
+        
     Volume_output_file = os.path.join(output_files_path, "flow.vtu")
     return Surface_output_file, Volume_output_file
 
@@ -96,23 +95,27 @@ def paraview_caller(Python_file, input_file, output_file):
 
 
 
+
 # ==============================================================
 # ==============================================================
 # Example
 # ==============================================================
-mesh_file_name = "mesh_channel_256x128.su2"
+mesh_file_name = "mesh_rocket_2d.su2"
 
 # Mesh generation function call
-mesh = mesh_generation(mesh_file_name, 1, 1)
+
+meshgen_2D(1, 1, config = {"filename" : "Mesh.su2"}, path_f = os.path.join(path, "Integration"))
+
 
 # Configuration file
-config_file = os.path.join(path, "inv_channel.cfg")
-
+config_file = os.path.join(path, "Integration\\exp.cfg")
+print("Configuration file path:", config_file)
 # Solver call
-surface_sol_file, volume_sol_file = run_solver(config_file, path)
+surface_sol_file, volume_sol_file = run_solver(config_file, os.path.join(path, "Integration"),
+                                                n_processors=4, path=os.path.join(path, "Integration", mesh_file_name))
 
 # PARAVIEW POST PROCESSING
-
+"""
 # Script
 paraview_script = "Paraview_post.py"
 
@@ -134,6 +137,7 @@ surface_sol_file = "surface_flow.vtu"
 paraview_caller(paraview_script, surface_sol_file, Cp_csv_path)
 
 Cp_csv = pd.read_csv(Cp_csv_path)
+"""
 
 
 
