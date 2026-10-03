@@ -257,7 +257,6 @@ def meshgen_2D(a, b, config = {}):
 # ===========================================================
 # Test
 # ===========================================================
-
 if __name__ == "__main__":
     config = {
         "filename"              : "Mesh.su2",
@@ -273,5 +272,5 @@ if __name__ == "__main__":
         "alpha"                 : radians(6)
     }
     
-meshgen_2D(1, 1, config = config)
+    meshgen_2D(1, 1, config = config)
     
