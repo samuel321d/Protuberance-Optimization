@@ -24,37 +24,68 @@ import numpy as np
 import subprocess
 import pandas as pd
 from Mesh_2D import meshgen_2D
+import shutil
 
+
+#========================================================================================
 # PATH DEFINITION
+#========================================================================================
+
 #  Working directory path
 folder = os.path.dirname(os.path.abspath(__file__))
+
+
+# Executables paths
+MPIEXEC = shutil.which("mpiexec")
+SU2_CFD = shutil.which("SU2_CFD")
+
 # Change the current working directory to the script's directory
 os.chdir(folder)
+#========================================================================================
+
 
 #========================================================================================
 # Function to run the SU2 solver with a given configuration file and output path
 #========================================================================================
+
+
 def run_solver(config_file, output_files_path, n_processors=4):
     """
-    Input =  configuration file with instructions for SU2 
-    output = Output files path for postprocessing in gmsh
+    Functions that calls SU2 and runs a config_file in parallel
+    Inputs:
+    - config_file: configuration file name
+    - output_files_path: folder where solution files will be stored
+    -n_processors: number of processors to use in parallel
+    Outputs:
+    - surface_output_file: path to the surface flow output file
+    - volume_output_file: path to the volume flow output file    
+
     """
+    # Files paths and folder definitions    
+    config_file = os.path.abspath(config_file)
+    output_files_path = os.path.abspath(output_files_path)
+    print(f"Running SU2 with configuration file: {config_file}")
 
-    result = subprocess.run(
-        ["mpiexec.exe", "-n", str(n_processors), "SU2_CFD", config_file],
-        capture_output=True,
-        text=True
-    )
+    # Execution on terminal
+    try:
+        cmd = [MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file]
+        subprocess.run(
+            cmd,
+            cwd=output_files_path,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"SU2 falló con código {e.returncode}") from e
 
-    print(result.stdout)
-    if result.returncode != 0:
-        print("Error:", result.stderr)
-    
-    
-    Surface_output_file = os.path.join(output_files_path, "surface_flow.vtu")
-        
-    Volume_output_file = os.path.join(output_files_path, "flow.vtu")
-    return Surface_output_file, Volume_output_file
+    surface_output_file = os.path.join(output_files_path, "surface_flow.vtu")
+    volume_output_file = os.path.join(output_files_path, "flow.vtu")
+
+    for f in (surface_output_file, volume_output_file):
+        if not os.path.exists(f):
+            raise FileNotFoundError(f"SU2 terminó pero no se generó {f}")
+
+    return surface_output_file, volume_output_file
+
 #========================================================================================
 
 #========================================================================================
@@ -67,8 +98,12 @@ mesh_file_name = "Mesh.su2"
 #========================================================================================
 # Mesh generation function call
 #========================================================================================
-#meshgen_2D(1, 1, config = {"filename" : "Mesh.su2"}, folder = folder)
+mesh_file_path = meshgen_2D(1, 1, config = {"filename" : mesh_file_name})
+
 #========================================================================================
 
-
-Surface_output_file, Volume_output_file = run_solver(config_file, folder, n_processors=4)
+#========================================================================================
+# Solver call
+#========================================================================================
+surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=4)
+#========================================================================================

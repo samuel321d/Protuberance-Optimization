@@ -11,7 +11,6 @@ This file contains the function to generate the 2D mesh of the Hermite Curve on 
 # Libraries
 # ===========================================================
 # 3rd party imports
-import os
 from pathlib import Path
 from math import radians
 import gmsh
@@ -24,7 +23,7 @@ from Hermite import generate_hermite_paper_fairing as Hermite
 # ===========================================================
 # Function
 # ===========================================================
-def meshgen_2D(a, b, config = {}, folder = None):
+def meshgen_2D(a, b, config = {}):
     """
     Function to generate a mesh of the Hermite curve mounted on the rocket.
     Includes the generation of inflation layers.
@@ -43,9 +42,9 @@ def meshgen_2D(a, b, config = {}, folder = None):
     default_config = {
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
-        "layer ratio"           : 1.22,
-        "layer thickness"       : 9.75e-7*1000,
-        "number of layers"      : 40,
+        "layer ratio"           : 1.2,
+        "layer thickness"       : 1.68e-3,
+        "number of layers"      : 45,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
         "BOI2"                  : 300,
@@ -80,53 +79,8 @@ def meshgen_2D(a, b, config = {}, folder = None):
     path.unlink()
     
     # Read rocket surface
-    path = Path(__file__).with_name("Rocket_points.dxf")
-    doc = ezdxf.readfile(path)
-    msp = doc.modelspace()
-    
-    points = []
-    print(msp)
-    for entity in msp:
-        # ----------------
-        # LINE 
-        # ----------------
-        if entity.dxftype() == "LINE":
-            
-            p1 = entity.dxf.start
-            p2 = entity.dxf.end
-            
-            points.append((p1.x, p1.y))
-            points.append((p2.x, p2.y))
-            
-        # ----------------
-        # ARC
-        # ----------------
-        elif entity.dxftype() == "ARC":
-            
-            center = entity.dxf.center
-            radius = entity.dxf.radius
-            
-            theta1 = np.deg2rad(entity.dxf.start_angle)
-            theta2 = np.deg2rad(entity.dxf.end_angle)
-            
-            theta = np.linspace(theta1, theta2, 50)
-            
-            for t in theta:
-                x = center.x + radius * np.cos(t)
-                y = center.y + radius * np.sin(t)
-                
-                points.append((x, y))
-                
-        # ----------------
-        # SPLINE
-        # ----------------
-        elif entity.dxftype() == "SPLINE":
-            
-            spline_points = entity.flattening(0.01)
-            
-            for p in spline_points:
-                points.append((p.x, p.y))
-    rocket_coords = np.array(points)
+    path = Path(__file__).with_name("Rocket_points.txt")
+    rocket_coords = np.loadtxt(path, dtype = float, delimiter = ",")
     
     x_rocket = rocket_coords[:, 0]
     y_rocket = rocket_coords[:, 1]
@@ -225,6 +179,7 @@ def meshgen_2D(a, b, config = {}, folder = None):
             farfield_curves.append(c_tag)
     
     # Physical groups
+    gmsh.model.addPhysicalGroup(2, [fluid_domain[1]], name = "Fluid")
     gmsh.model.addPhysicalGroup(1, farfield_curves, name = "Farfield")
     gmsh.model.addPhysicalGroup(1, wall_curves, name = "Wall")
     
@@ -293,31 +248,32 @@ def meshgen_2D(a, b, config = {}, folder = None):
     gmsh.option.setNumber("Mesh.Points", 1)
     
     # Read save directory
-    path = os.path.join(folder, config["filename"]) 
+    path = Path(__file__).parent / config["filename"]
     gmsh.write(str(path))
-    gmsh.fltk.run()
+    gmsh.fltk.run()  # Display the mesh in the GUI
     # Finalize
     gmsh.finalize()
+    return str(path)
 
 # ===========================================================
 # Test
 # ===========================================================
-"""
 if __name__ == "__main__":
     config = {
         "filename"              : "Mesh.su2",
-        "wall size"             : 10,
+        "wall size"             : 1,
         "layer thickness"       : 1.68e-3,
         "layer ratio"           : 1.2,
         "number of layers"      : 45,
-        "BOI1"                  : 2000,
-        "BOI2"                  : 1000,
-        "BOI3"                  : 500,
-        "global size"           : 4000,
+        "BOI1"                  : 1000,
+        "BOI2"                  : 5000,
+        "BOI3"                  : 100,
+        "global size"           : 2000,
         "use boundary layer"    : True,
-        "alpha"                 : radians(6)
+        "alpha"                 : radians(0)
     }
-    """
-meshgen_2D(1, 1, config = {"filename" : "Mesh.su2"}, folder = os.getcwd())
+    
+    meshgen_2D(1, 1, config = config)
 
+meshgen_2D(1, 1, config = config)
     
