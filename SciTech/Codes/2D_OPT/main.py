@@ -17,15 +17,15 @@ General structure:
 # ==========================================================
 # Libraries
 # ==========================================================
-import sys
+
 import os
-import gmsh
 import numpy as np
 import subprocess
 import pandas as pd
 from Mesh_2D import meshgen_2D
 import shutil
-
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
 #========================================================================================
 # PATH DEFINITION
@@ -38,6 +38,7 @@ folder = os.path.dirname(os.path.abspath(__file__))
 # Executables paths
 MPIEXEC = shutil.which("mpiexec")
 SU2_CFD = shutil.which("SU2_CFD")
+PVPYTHON = shutil.which("pvpython")
 
 # Change the current working directory to the script's directory
 os.chdir(folder)
@@ -86,24 +87,164 @@ def run_solver(config_file, output_files_path, n_processors=4):
 
     return surface_output_file, volume_output_file
 
+
+
+def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral):
+    """
+    This function execute a python script runing the commands on paraview to export the pressure coefficient over a surface
+
+    INput = Python script with Paraview commands and path to surface_flow.vtu
+    Outpit_file_cp = name of the file that is goping to contain the Cp distribution along a given surface
+    output_file_integral = name of the file that is going to contain the integral of Cp along the surface
+
+    Note: ThE Python script must be at the working directory
+    """
+    
+    result = subprocess.run(
+        [PVPYTHON, Python_file, input_file, output_file_cp, output_file_integral],
+        capture_output=True,
+        text=True
+    )
+
 #========================================================================================
 
 #========================================================================================
-# Config and mesh files 
+# Objective function for the optimization process
 #========================================================================================
+
+history = []
+eval_count = 0
+
+def objective_fun(parameters, config , mesh,  folder, n_processors):
+
+    """
+    Function that calls for meshing, solver and post-processing to calculate the metric for the optimization process.
+    Inputs:
+    - parameters: parameters for the Hermite curve [a,b]
+    - config: configuration file for the SU2 solver 
+    - mesh: mesh file name with .su2 extension; name must match config file
+    - folder: folder where the mesh and solution files are going to be stored
+    Outputs:
+    - metric: calculated metric based on Cp distribution, Cd and Cp integral; used for optimization
+    """
+
+    global eval_count
+    eval_count += 1
+    #========================================================================================
+    # HERMITE PARAMETERS
+    #========================================================================================
+    a, b = parameters
+    #========================================================================================
+    # Config and mesh files 
+    #========================================================================================
+    config_file = config
+    mesh_file_name = mesh
+    #========================================================================================
+
+    #========================================================================================
+    # Mesh generation function call
+    #========================================================================================
+    mesh_file_path = meshgen_2D(a, b, config = {"filename" : mesh_file_name})
+
+    #========================================================================================
+
+    #========================================================================================
+    # Solver call
+    #========================================================================================
+    surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=n_processors)
+    #========================================================================================
+
+    #========================================================================================
+    # Post-processing with Paraview
+    #========================================================================================
+    paraview_script = "Paraview_post.py"
+
+    # Output file name
+    Cp_csv_path = "Cp_dist.csv"
+    Cp_integral_path = "Cp_integral.csv"
+    surface_sol_file = "surface_flow.vtu"
+
+    # Integral of Cp along the curve and paraview function execution
+    paraview_caller(paraview_script, surface_sol_file, Cp_csv_path, Cp_integral_path)
+    Cp_sum_csv  =  pd.read_csv(Cp_integral_path)
+    Cp_sum = Cp_sum_csv["Pressure_Coefficient"][0]
+
+    # CSV WITH Cp distribution READ 
+    Cp_csv = pd.read_csv(Cp_csv_path)
+    Cp_csv = Cp_csv.sort_values(by="Points_0")
+    Cp_csv = Cp_csv.drop_duplicates(subset="Points_0")
+
+    # Cp extraction
+    Cp_dist = np.array(Cp_csv["Pressure_Coefficient"])
+    x = np.array(Cp_csv["Points_0"])
+
+    # Cp gradient calc
+    Cp_grad = np.max(np.abs(np.gradient(Cp_dist, x)))
+
+    # History csv read for Cd
+    history_data = pd.read_csv(os.path.join(folder, 'history.csv'))
+    Cd_final = np.array(history_data[ '       "CD"       '])[-1]
+    #========================================================================================
+
+    #========================================================================================
+    # Metric calc for optimization
+    #========================================================================================
+
+    # Define weights for the metric
+    w_Cd = 1/3
+    w_grad = 1
+    w_int = 1/30
+
+    metric = w_Cd*Cd_final + w_grad*Cp_grad + w_int*Cp_sum
+
+    if eval_count % 10 == 0:
+        data = {
+            "Evaluation": eval_count,
+            "Parameter_1": parameters[0],
+            "Parameter_2": parameters[1],
+            "Cd": Cd_final,
+            "Cp_integral": Cp_sum,
+            "Cp_gradient": Cp_grad,
+            "Objective": metric
+        }
+
+        History = pd.DataFrame([data])
+
+        History.to_csv(
+            "optimization_history.csv",
+            mode="a",
+            header=not os.path.exists("optimization_history.csv"),
+            index=False
+        )
+    
+    return metric
+
+#========================================================================================
+
+
+# ===========================================================
+# Optimization
+# ===========================================================
+
+
+# Configuration of optimization
+x0 = np.array([1, 1])               # Initial values
+bounds = ([0.5, 3.0], [0.5, 3.0])   # Bounds
+
 config_file = "Rocket_2d.cfg"
-mesh_file_name = "Mesh.su2"
-#========================================================================================
+mesh_file = "Mesh.su2"
+n_processors = 4
 
-#========================================================================================
-# Mesh generation function call
-#========================================================================================
-mesh_file_path = meshgen_2D(1, 1, config = {"filename" : mesh_file_name})
+# Optimization
+optim = minimize(objective_fun, x0, args = (config_file, mesh_file, folder, n_processors),
+                method = "Nelder-Mead", bounds = bounds,
+                options={'xatol': 1e-5, 'disp': True, 'maxiter':10000})
 
-#========================================================================================
 
-#========================================================================================
-# Solver call
-#========================================================================================
-surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=4)
-#========================================================================================
+if not optim.success:
+    # Verify optimization success
+    print("The optimization failed", optim.message)
+else:
+    # Extract optimum value
+    a = optim.x[0]
+    b = optim.x[1]

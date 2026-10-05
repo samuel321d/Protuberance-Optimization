@@ -275,5 +275,3 @@ if __name__ == "__main__":
     
     meshgen_2D(1, 1, config = config)
 
-meshgen_2D(1, 1, config = config)
-    
