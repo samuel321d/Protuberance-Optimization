@@ -113,7 +113,7 @@ def meshgen_2D(a, b, config = {}, path_f= None):
             theta1 = np.deg2rad(entity.dxf.start_angle)
             theta2 = np.deg2rad(entity.dxf.end_angle)
             
-            theta = np.linspace(theta1, theta2, 50)
+            theta = np.linspace(theta1, theta2, 32)
             
             for t in theta:
                 x = center.x + radius * np.cos(t)
@@ -130,6 +130,8 @@ def meshgen_2D(a, b, config = {}, path_f= None):
             
             for p in spline_points:
                 points.append((p.x, p.y))
+    points = np.array(points)
+                    
     rocket_coords = np.array(points)
     
     x_rocket = rocket_coords[:, 0]

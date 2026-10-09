@@ -1,15 +1,30 @@
 import ezdxf
 import numpy as np
 from pathlib import Path
-
+import pandas as pd
+import matplotlib.pyplot as plt
 # Read rocket surface
 path = Path(__file__).with_name("Rocket_points.dxf")
 doc = ezdxf.readfile(path)
 msp = doc.modelspace()
 
+# =================================================================
+# Function to identify upper and lower points on rocket surface
+# =================================================================
+
+def classify_point(x, y, points_up, points_down):
+    if y >= 0:
+        points_up.append((x, y))
+    else:
+        points_down.append((x, y))
+# =================================================================
+
+
+
 points = []
-print(msp)
+
 for entity in msp:
+    
     # ----------------
     # LINE 
     # ----------------
@@ -32,7 +47,7 @@ for entity in msp:
         theta1 = np.deg2rad(entity.dxf.start_angle)
         theta2 = np.deg2rad(entity.dxf.end_angle)
         
-        theta = np.linspace(theta1, theta2, 50)
+        theta = np.linspace(theta1, theta2, 32)
         
         for t in theta:
             x = center.x + radius * np.cos(t)
@@ -49,6 +64,17 @@ for entity in msp:
         
         for p in spline_points:
             points.append((p.x, p.y))
-rocket_coords = np.array(points)
+points = np.array(points)
+
+n_points = len(points)
+print(n_points)
+rocket_coords = points[:int(n_points/2 -2)]
+print(f"Inicial:{rocket_coords[0]}")
+print(f"Penultimo:{rocket_coords[-2]}")
+print(f"FInal:{rocket_coords[-1]}")
 
 np.savetxt(Path(__file__).with_name("Rocket_points.txt"), rocket_coords, delimiter = ",", newline = "\n")
+
+points_plot = pd.read_csv("Rocket_points.txt", header = None)
+points_plot.columns = ["x", "y"]
+
