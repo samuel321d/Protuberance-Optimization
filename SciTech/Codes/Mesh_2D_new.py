@@ -40,11 +40,11 @@ def meshgen_2D(a, b, config = {}):
     # Default configuration
     default_config = {
         "filename"              : "Mesh.su2",
-        "wall size"             : 1,
+        "wall size"             : 10,
         "layer ratio"           : 1.2,
-        "layer thickness"       : 9.75e-7*1000,
-        "total thickness"       : 1,
-        "number of layers"      : 40,
+        "layer thickness"       : 1.68e-3,
+        "total thickness"       : 30,
+        "number of layers"      : 45,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
         "BOI2"                  : 300,
@@ -80,7 +80,7 @@ def meshgen_2D(a, b, config = {}):
     path.unlink()
     
     # Read rocket surface
-    path = Path(__file__).with_name("Rocket_points.txt")
+    path = Path(__file__).with_name("Rocket_points_new.txt")
     rocket_coords = np.loadtxt(path, dtype = float, delimiter = ",")
     
     x_rocket = rocket_coords[:, 0]
@@ -214,6 +214,23 @@ def meshgen_2D(a, b, config = {}):
     msh.field.setNumber(BOI3, "VIn", config["BOI3"])
     msh.field.setNumber(BOI3, "Thickness", config["BOI3"])
     
+    BOI4 = msh.field.add("Box")
+    msh.field.setNumber(BOI4, "XMin", -0.5*L)
+    msh.field.setNumber(BOI4, "XMax", 2.0*L)
+    msh.field.setNumber(BOI4, "YMin", -0.3*L)
+    msh.field.setNumber(BOI4, "YMax", 0.6*L)
+    msh.field.setNumber(BOI4, "VIn", config["BOI4"])
+    msh.field.setNumber(BOI4, "Thickness", config["BOI4"])
+    
+    BOI5 = msh.field.add("Box")
+    msh.field.setNumber(BOI5, "XMin", -0.1*L)
+    msh.field.setNumber(BOI5, "XMax", 1.2*L)
+    msh.field.setNumber(BOI5, "YMin", -0.25*L)
+    msh.field.setNumber(BOI5, "YMax", 0.2*L)
+    msh.field.setNumber(BOI5, "VIn", config["BOI5"])
+    msh.field.setNumber(BOI5, "Thickness", config["BOI5"])
+
+
     # Distance
     wall_distance = msh.field.add("Distance")
     msh.field.setNumbers(wall_distance, "CurvesList", wall_curves)
@@ -223,13 +240,13 @@ def meshgen_2D(a, b, config = {}):
     wall_sizing = msh.field.add("Threshold")
     msh.field.setNumber(wall_sizing, "InField", wall_distance)
     msh.field.setNumber(wall_sizing, "SizeMin", config["wall size"])
-    msh.field.setNumber(wall_sizing, "SizeMax", config["global size"])
-    msh.field.setNumber(wall_sizing, "DistMin", 0.0)
+    msh.field.setNumber(wall_sizing, "SizeMax", config["BOI4"])
+    msh.field.setNumber(wall_sizing, "DistMin", config["wall size"])
     msh.field.setNumber(wall_sizing, "DistMax", config["threshold distance"])
     
     # Combine Sizings
     min = msh.field.add("Min")
-    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, wall_sizing])
+    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, BOI4, BOI5])
     msh.field.setAsBackgroundMesh(min)
     
     # # Inflation layers field
@@ -284,6 +301,25 @@ if __name__ == "__main__":
         "use boundary layer"    : True,
         "alpha"                 : radians(6)
     }
-    
-    meshgen_2D(1, 1, config = config)
+
+config = {
+    "filename"              : "Mesh.su2",
+    "wall size"             : 1,
+    "layer ratio"           : 1.2,
+    "layer thickness"       : 1.68e-3,
+    "total thickness"       : 10,
+    "number of layers"      : 45,
+    "use boundary layer"    : True,
+    "BOI1"                  : 1000,
+    "BOI2"                  : 300,
+    "BOI3"                  : 100,
+    "BOI4"                  : 50,
+    "BOI5"                  : 10,    
+    "global size"           : 2000,
+    "threshold distance"    : 100,
+    "protuberance location" : 1500,
+    "alpha"                 : radians(-6),
+    "L"                     : 3200
+}   
+meshgen_2D(1, 1, config = config)
     

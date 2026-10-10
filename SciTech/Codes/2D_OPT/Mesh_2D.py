@@ -44,15 +44,19 @@ def meshgen_2D(a, b, config = {}):
         "wall size"             : 1,
         "layer ratio"           : 1.2,
         "layer thickness"       : 1.68e-3,
+        "total thickness"       : 10,
         "number of layers"      : 45,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
         "BOI2"                  : 300,
         "BOI3"                  : 100,
+        "BOI4"                  : 50,
+        "BOI5"                  : 10,    
         "global size"           : 2000,
+        "threshold distance"    : 100,
         "protuberance location" : 1500,
-        "alpha"                 : radians(0),
-        "L"                     : 3000
+        "alpha"                 : radians(-6),
+        "L"                     : 3200
     }
     
     # Read config
