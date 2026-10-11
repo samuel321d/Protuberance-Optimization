@@ -85,7 +85,22 @@ def run_solver(config_file, output_files_path, n_processors=4):
 
 
 
+def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral):
+    """
+    This function execute a python script runing the commands on paraview to export the pressure coefficient over a surface
 
+    INput = Python script with Paraview commands and path to surface_flow.vtu
+    Outpit_file_cp = name of the file that is goping to contain the Cp distribution along a given surface
+    output_file_integral = name of the file that is going to contain the integral of Cp along the surface
+
+    Note: ThE Python script must be at the working directory
+    """
+    
+    result = subprocess.run(
+        [PVPYTHON, Python_file, input_file, output_file_cp, output_file_integral],
+        capture_output=True,
+        text=True
+    )
 
 
 
@@ -109,7 +124,7 @@ mesh_file_name = "Mesh.su2"
 #========================================================================================
 # Mesh generation function call
 #========================================================================================
-#mesh_file_path = meshgen_2D(a, b, config = {"filename" : mesh_file_name})
+mesh_file_path = meshgen_2D(a, b, config = {"filename" : mesh_file_name, "BOI5" : 10})
 
 #========================================================================================
 
@@ -118,3 +133,38 @@ mesh_file_name = "Mesh.su2"
 #========================================================================================
 surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=4)
 #========================================================================================
+
+
+
+paraview_script = "Paraview_post.py"
+
+# Output file name
+Cp_csv_path = "Cp_dist.csv"
+Cp_integral_path = "Cp_integral.csv"
+surface_sol_file = "surface_flow.vtu"
+
+# Integral of Cp along the curve and paraview function execution
+paraview_caller(paraview_script, surface_sol_file, Cp_csv_path, Cp_integral_path)
+Cp_sum_csv  =  pd.read_csv(Cp_integral_path)
+Cp_sum = Cp_sum_csv["Pressure_Coefficient"][0]
+
+# CSV WITH Cp distribution READ 
+Cp_csv = pd.read_csv(Cp_csv_path)
+Cp_csv = Cp_csv.sort_values(by="Points_0")
+Cp_csv = Cp_csv.drop_duplicates(subset="Points_0")
+
+# Cp extraction
+Cp_dist = np.array(Cp_csv["Pressure_Coefficient"])
+x = np.array(Cp_csv["Points_0"])
+
+# Cp gradient calc
+Cp_grad = np.max(np.abs(np.gradient(Cp_dist, x)))
+
+# History csv read for Cd
+history_data = pd.read_csv(os.path.join(folder, 'history.csv'))
+Cd_final = np.array(history_data[ '       "CD"       '])[-1]
+
+
+
+print(f"Integral of Cp along the surface: {Cp_sum}")
+print(f"Gradient of Cp along the surface: {Cp_grad}")

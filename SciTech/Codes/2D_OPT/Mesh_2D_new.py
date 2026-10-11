@@ -42,19 +42,19 @@ def meshgen_2D(a, b, config = {}):
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
         "layer ratio"           : 1.2,
-        "layer thickness"       : 1.68e-3,
+        "layer thickness"       : 6.74e-2,
         "total thickness"       : 10,
-        "number of layers"      : 45,
+        "number of layers"      : 25,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
         "BOI2"                  : 300,
         "BOI3"                  : 100,
         "BOI4"                  : 50,
-        "BOI5"                  : 10,    
+        "BOI5"                  : 20,    
         "global size"           : 2000,
         "threshold distance"    : 100,
         "protuberance location" : 1500,
-        "alpha"                 : radians(-6),
+        "alpha"                 : radians(0),
         "L"                     : 3200
     }
     
@@ -145,11 +145,36 @@ def meshgen_2D(a, b, config = {}):
     
     # Fuse rocket w Hermite
     fusion, _ = geom.fuse([(2, s_rocket)], [(2, s_hermite)])
+
+
+    print("Fusion result:")
+    print(fusion)
+    print("Number of surfaces:", len(fusion))
+    print("Surface tags:", fusion[0][1])
     
     # Rotate rocket
     geom.rotate(fusion, 0, 0, 0, 0, 0, 1, config["alpha"])
-    r_xmin, r_ymin, _, r_xmax, r_ymax, _ = gmsh.model.occ.getBoundingBox(2, fusion[0][1]) # Bounding box
-    
+
+
+    boxes = [
+        gmsh.model.occ.getBoundingBox(dim, tag)
+        for dim, tag in fusion
+    ]
+
+    #r_xmin = min(box[0] for box in boxes)
+    #r_ymin = min(box[1] for box in boxes)
+    #r_xmax = max(box[3] for box in boxes)
+    #r_ymax = max(box[4] for box in boxes)
+
+
+
+    r_xmin1, r_ymin1, _1, r_xmax1, r_ymax1, _1 = gmsh.model.occ.getBoundingBox(2, fusion[0][1]) # Bounding box
+    r_xmin2, r_ymin2, _2, r_xmax2, r_ymax2, _2 = gmsh.model.occ.getBoundingBox(2, fusion[1][1])
+
+    r_xmin = np.min([r_xmin1, r_xmin2])
+    r_ymin = np.min([r_ymin1, r_ymin2])
+    r_xmax = np.max([r_xmax1, r_xmax2])
+    r_ymax = np.max([r_ymax1, r_ymax2])
     geom.synchronize()
     
     # Cut rocket from domain
@@ -236,16 +261,17 @@ def meshgen_2D(a, b, config = {}):
     # Distance
     wall_distance = msh.field.add("Distance")
     msh.field.setNumbers(wall_distance, "CurvesList", wall_curves)
+
     msh.field.setNumber(wall_distance, "Sampling", 300)
     
     # Treshold
-    wall_sizing = msh.field.add("Threshold")
-    msh.field.setNumber(wall_sizing, "InField", wall_distance)
-    msh.field.setNumber(wall_sizing, "SizeMin", config["wall size"])
-    msh.field.setNumber(wall_sizing, "SizeMax", config["BOI4"])
-    msh.field.setNumber(wall_sizing, "DistMin", config["wall size"])
-    msh.field.setNumber(wall_sizing, "DistMax", config["threshold distance"])
-    
+    #wall_sizing = msh.field.add("Threshold")
+    #msh.field.setNumber(wall_sizing, "InField", wall_distance)
+    #msh.field.setNumber(wall_sizing, "SizeMin", config["wall size"])
+    #msh.field.setNumber(wall_sizing, "SizeMax", config["BOI5"])
+    #msh.field.setNumber(wall_sizing, "DistMin", 0)
+    #    msh.field.setNumber(wall_sizing, "DistMax", config["threshold distance"])
+
     # Combine Sizings
     min = msh.field.add("Min")
     msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, BOI4, BOI5])
@@ -264,7 +290,8 @@ def meshgen_2D(a, b, config = {}):
     msh.field.setNumber(BL, "Thickness", config["total thickness"])
     msh.field.setNumber(BL, "Quads", 1)
     msh.field.setAsBoundaryLayer(BL)
-    
+
+
     # Generate mesh
     msh.generate(2)
     
@@ -280,7 +307,7 @@ def meshgen_2D(a, b, config = {}):
     # Read save directory
     path = Path(__file__).parent / config["filename"]
     gmsh.write(str(path))
-    #gmsh.fltk.run()
+    gmsh.fltk.run()
     
     # Finalize
     gmsh.finalize()
@@ -302,14 +329,13 @@ if __name__ == "__main__":
         "BOI2"                  : 300,
         "BOI3"                  : 100,
         "BOI4"                  : 50,
-        "BOI5"                  : 10,    
+        "BOI5"                  : 20,    
         "global size"           : 2000,
         "threshold distance"    : 100,
         "protuberance location" : 1500,
-        "alpha"                 : radians(-6),
+        "alpha"                 : radians(3),
         "L"                     : 3200
     }  
     
  
-    meshgen_2D(1, 1, config = config)
-    
+#meshgen_2D(1, 1)

@@ -1,7 +1,17 @@
 from paraview.simple import *
 import sys
 
-def paraview_postprocessing(input_file_name, output_file_name,  integral_file_name):
+def paraview_postprocessing(input_file_name, output_file_name,  integral_file_name, x_min, xmax):
+    """
+    Function that executes a paraview script to obtain pressure coefficient distributions on the surface of the rocket and the integral of the pressure coefficient over the surface.
+    Inputs:
+    input_file_name: Name of the input VTU file
+    output_file_name: Name of the output file for the pressure coefficient distributions
+    integral_file_name: Name of the output file for the integral of the pressure coefficient
+    x_min: Minimum x-coordinate for the clipping region
+    xmax: Maximum x-coordinate for the clipping region
+
+    """
 
     surface_flowvtu = XMLUnstructuredGridReader(registrationName='surface_flow.vtu', FileName=[input_file_name])
 
@@ -23,18 +33,14 @@ def paraview_postprocessing(input_file_name, output_file_name,  integral_file_na
     # reset view to fit data
     renderView1.ResetCamera(False, 0.9)
 
-    #changing interaction mode based on data extents
-    renderView1.Set(
-        InteractionMode='2D',
-        CameraPosition=[1589.2040729522705, -1.52587890625e-05, 10792.332711219788],
-        CameraFocalPoint=[1589.2040729522705, -1.52587890625e-05, 0.0],
-    )
-
     # get the material library
     materialLibrary1 = GetMaterialLibrary()
 
     # update the view to ensure updated data information
     renderView1.Update()
+
+    # change representation type
+    surface_flowvtuDisplay.SetRepresentationType('Wireframe')
 
     # create a new 'Clip'
     clip1 = Clip(registrationName='Clip1', Input=surface_flowvtu)
@@ -48,11 +54,83 @@ def paraview_postprocessing(input_file_name, output_file_name,  integral_file_na
     # trace defaults for the display properties.
     clip1Display.Representation = 'Surface'
 
-    # hide data in view
-    Hide(surface_flowvtu, renderView1)
+    # update the view to ensure updated data information
+    renderView1.Update()
+
+    # set active source
+    SetActiveSource(surface_flowvtu)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip1.ClipType)
+
+    # create a new 'Clip'
+    clip2 = Clip(registrationName='Clip2', Input=surface_flowvtu)
+
+    # Properties modified on clip2.ClipType
+    clip2.ClipType.Origin = [x_max, 0, 0.0]
+
+    # show data in view
+    clip2Display = Show(clip2, renderView1, 'UnstructuredGridRepresentation')
+
+    # trace defaults for the display properties.
+    clip2Display.Representation = 'Surface'
 
     # update the view to ensure updated data information
     renderView1.Update()
+
+    # set active source
+    SetActiveSource(clip1)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip2.ClipType)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    ShowInteractiveWidgets(proxy=clip1.ClipType)
+
+    # set active source
+    SetActiveSource(surface_flowvtu)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip1.ClipType)
+
+    # set active source
+    SetActiveSource(clip2)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    ShowInteractiveWidgets(proxy=clip2.ClipType)
+
+    # Properties modified on clip2.ClipType
+    clip2.ClipType.Normal = [-1.0, 0.0, 0.0]
+
+    # update the view to ensure updated data information
+    renderView1.Update()
+
+    # set active source
+    SetActiveSource(surface_flowvtu)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip2.ClipType)
+
+    # create a new 'Clip'
+    clip3 = Clip(registrationName='Clip3', Input=surface_flowvtu)
+
+    # Properties modified on clip3.ClipType
+    clip3.ClipType.Origin = [x_min, 0, 0.0]
+
+    # show data in view
+    clip3Display = Show(clip3, renderView1, 'UnstructuredGridRepresentation')
+
+    # trace defaults for the display properties.
+    clip3Display.Representation = 'Surface'
+
+    # update the view to ensure updated data information
+    renderView1.Update()
+
+    # set active source
+    SetActiveSource(surface_flowvtu)
+
+    # toggle interactive widget visibility (only when running from the GUI)
+    HideInteractiveWidgets(proxy=clip3.ClipType)
 
     # get layout
     layout1 = GetLayout()
@@ -71,7 +149,7 @@ def paraview_postprocessing(input_file_name, output_file_name,  integral_file_na
     )
 
     # show data in view
-    clip1Display_1 = Show(clip1, spreadSheetView1, 'SpreadSheetRepresentation')
+    surface_flowvtuDisplay_1 = Show(surface_flowvtu, spreadSheetView1, 'SpreadSheetRepresentation')
 
     # assign view to a particular cell in the layout
     AssignViewToLayout(view=spreadSheetView1, layout=layout1, hint=2)
@@ -79,11 +157,53 @@ def paraview_postprocessing(input_file_name, output_file_name,  integral_file_na
     # export view
     ExportView(output_file_name, view=spreadSheetView1, FrameWindow=[0, 0])
 
+    # destroy spreadSheetView1
+    Delete(spreadSheetView1)
+    del spreadSheetView1
+
+    # close an empty frame
+    layout1.Collapse(2)
+
+    # set active view
+    SetActiveView(renderView1)
+
     # create a new 'Integrate Variables'
-    integrateVariables1 = IntegrateVariables(registrationName='IntegrateVariables1', Input=clip1)
+    integrateVariables1 = IntegrateVariables(registrationName='IntegrateVariables1', Input=surface_flowvtu)
+
+    # set active source
+    SetActiveSource(surface_flowvtu)
+
+    # set active source
+    SetActiveSource(integrateVariables1)
+
+    # set active source
+    SetActiveSource(surface_flowvtu)
+
+    # destroy integrateVariables1
+    Delete(integrateVariables1)
+    del integrateVariables1
+
+    # get animation scene
+    animationScene1 = GetAnimationScene()
+
+    # update animation scene based on data timesteps
+    animationScene1.UpdateAnimationUsingDataTimeSteps()
+
+    # create a new 'Integrate Variables'
+    integrateVariables1 = IntegrateVariables(registrationName='IntegrateVariables1', Input=surface_flowvtu)
+
+    # Create a new 'SpreadSheet View'
+    spreadSheetView1 = CreateView('SpreadSheetView')
+    spreadSheetView1.Set(
+        ColumnToSort='',
+        BlockSize=1024,
+    )
 
     # show data in view
     integrateVariables1Display = Show(integrateVariables1, spreadSheetView1, 'SpreadSheetRepresentation')
+
+    # add view to a layout so it's visible in UI
+    AssignViewToLayout(view=spreadSheetView1, layout=layout1, hint=0)
 
     # update the view to ensure updated data information
     renderView1.Update()
@@ -93,54 +213,7 @@ def paraview_postprocessing(input_file_name, output_file_name,  integral_file_na
 
     # export view
     ExportView(integral_file_name, view=spreadSheetView1, FrameWindow=[0, 0])
-
-    #================================================================
-    # addendum: following script captures some of the application
-    # state to faithfully reproduce the visualization during playback
-    #================================================================
-
-    #--------------------------------
-    # saving layout sizes for layouts
-
-    # layout/tab size in pixels
-    layout1.SetSize(858, 476)
-
-    #-----------------------------------
-    # saving camera placements for views
-
-    # current camera placement for renderView1
-    renderView1.Set(
-        InteractionMode='2D',
-        CameraPosition=[1589.2040729522705, -1.52587890625e-05, 10792.332711219788],
-        CameraFocalPoint=[1589.2040729522705, -1.52587890625e-05, 0.0],
-        CameraParallelScale=1613.143675744214,
-    )
-
-
-    ##--------------------------------------------
-    ## You may need to add some code at the end of this python script depending on your usage, eg:
-    #
-    ## Render all views to see them appears
-    # RenderAllViews()
-    #
-    ## Interact with the view, usefull when running from pvpython
-    # Interact()
-    #
-    ## Save a screenshot of the active view
-    # SaveScreenshot("path/to/screenshot.png")
-    #
-    ## Save a screenshot of a layout (multiple splitted view)
-    # SaveScreenshot("path/to/screenshot.png", GetLayout())
-    #
-    ## Save all "Extractors" from the pipeline browser
-    # SaveExtracts()
-    #
-    ## Save a animation of the current active view
-    # SaveAnimation()
-    #
-    ## Please refer to the documentation of paraview.simple
-    ## https://www.paraview.org/paraview-docs/nightly/python/
-        
+            
     return output_file_name, integral_file_name
 
 if __name__ == "__main__":
