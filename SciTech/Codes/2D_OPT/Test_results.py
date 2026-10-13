@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-history = pd.read_csv("history.csv")
+history = pd.read_csv("history_mesh2.csv")
 
 print(history.head(5))
 
@@ -20,7 +20,7 @@ plt.xlabel("Iteration")
 plt.ylabel("RMS residual")
 plt.legend()
 plt.grid()
-plt.ylim(-5,1)
+plt.ylim(-6.5,1)
 plt.title("RMS Residuals")
 plt.show()
 

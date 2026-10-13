@@ -42,9 +42,9 @@ def meshgen_2D(a, b, config = {}):
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
         "layer ratio"           : 1.2,
-        "layer thickness"       : 6.74e-2,
-        "total thickness"       : 10,
-        "number of layers"      : 25,
+        "layer thickness"       : 3.68e-3,
+        "total thickness"       : 1,
+        "number of layers"      : 45,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
         "BOI2"                  : 300,
@@ -276,6 +276,30 @@ def meshgen_2D(a, b, config = {}):
     min = msh.field.add("Min")
     msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, BOI4, BOI5])
     msh.field.setAsBackgroundMesh(min)
+
+    print(wall_curves)
+    point_tags_wall = []
+    points_list = []
+    for wall in wall_curves:
+        points = gmsh.model.getBoundary(
+                                        [(1, wall)],
+                                        combined=False,
+                                        oriented=False,
+                                        recursive=False
+                                    )
+        points_list.append(points)
+        for dim, p_tag in points:
+            point_tags_wall.append(p_tag)
+
+    print(points_list)
+    point_tags_wall = list(set(point_tags_wall))
+    print("TAGG_PUNTOS:",point_tags_wall)
+
+    
+    for p in point_tags_wall:
+        gmsh.model.mesh.setSize([(0, p)], config["wall size"])
+
+
     
     # # Inflation layers field
     BL = msh.field.add("BoundaryLayer")
@@ -290,6 +314,8 @@ def meshgen_2D(a, b, config = {}):
     msh.field.setNumber(BL, "Thickness", config["total thickness"])
     msh.field.setNumber(BL, "Quads", 1)
     msh.field.setAsBoundaryLayer(BL)
+    
+
 
 
     # Generate mesh
@@ -338,4 +364,3 @@ if __name__ == "__main__":
     }  
     
  
-#meshgen_2D(1, 1)
