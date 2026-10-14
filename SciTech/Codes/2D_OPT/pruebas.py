@@ -65,7 +65,8 @@ def run_solver(config_file, output_files_path, n_processors=4):
 
     # Execution on terminal
     try:
-        cmd = [MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file]
+        # python3 parallel_computation.py -f Rocket_2d.cfg -n 8
+        cmd = ["python3", "parallel_computation.py", "-f" , config_file, "-n" ,str(n_processors)]
         subprocess.run(
             cmd,
             cwd=output_files_path,
@@ -131,7 +132,7 @@ mesh_file_path = meshgen_2D(a, b, config = {"filename" : mesh_file_name, "BOI5" 
 #========================================================================================
 # Solver call
 #========================================================================================
-surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=4)
+surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=8)
 #========================================================================================
 
 
