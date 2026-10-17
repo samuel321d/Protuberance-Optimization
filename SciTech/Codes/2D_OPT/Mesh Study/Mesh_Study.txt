@@ -1,0 +1,45 @@
+Malla sizing Wall = 5
+
+------------------------- Exit Success (SU2_CFD) ------------------------
+|         999|    0.474635|  5.3684e-01|   -3.326145|   -3.220290|   -3.146747|   -2.623731|   -5.137087|   -5.137087|    0.396353|    0.082878|
+
+
+
+Integral of Cp along the surface: 9.22516
+Gradient of Cp along the surface: 0.025063934426228944
+
+
+Malla sizing Wall = 3
+
+|         999|    1.366348|  8.3953e-01|   -2.657650|   -2.476668|   -2.358636|   -1.953871|   -5.030834|   -5.030834|    0.392535|    0.080956|
+
+Integral of Cp along the surface: 9.18479
+Gradient of Cp along the surface: 0.03225051194539179
+
+Malla sizing Wall = 1 (converge)
+
+|         394|    1.239385|  1.8928e+00|   -4.015768|   -3.996066|   -3.646647|   -3.318252|   -4.405748|   -4.405748|    0.398616|    0.081281|
+
+Integral of Cp along the surface: 9.41724
+Gradient of Cp along the surface: 0.03584343434343403
+
+Malla sizing Wall = 1 (RMS-5)
+
+|         999|    1.701145|  1.6002e+00|   -3.350736|   -3.333086|   -2.828386|   -2.648762|   -5.445176|   -5.445176|    0.395684|    0.080218|
+
+Integral of Cp along the surface: 7.71576
+Gradient of Cp along the surface: 0.0345111111111108
+
+Malla sizing Wall = 0.5 (converge)
+
+|         386|    2.055927|  3.2210e+00|   -4.020471|   -3.857459|   -3.876873|   -3.439884|   -4.195665|   -4.195665|    0.401166|    0.083693|
+
+Integral of Cp along the surface: 7.67977
+Gradient of Cp along the surface: 0.03314400000000001
+
+Malla sizing Wall = 0.5 (RMS-5)
+
+|         999|    1.983906|  3.2022e+00|   -4.635131|   -4.716366|   -4.126854|   -3.940037|   -4.981553|   -4.981553|    0.399130|    0.083036|
+
+Integral of Cp along the surface: 5.7997
+Gradient of Cp along the surface: 0.032192

@@ -14,7 +14,6 @@ This file contains the function to generate the 2D mesh of the Hermite Curve on 
 from pathlib import Path
 from math import radians
 import gmsh
-import ezdxf
 import numpy as np
 
 # Personal imports
@@ -42,9 +41,9 @@ def meshgen_2D(a, b, config = {}):
     default_config = {
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
-        "layer ratio"           : 1.2,
-        "layer thickness"       : 1.68e-3,
-        "total thickness"       : 10,
+        "layer ratio"           : 1.21,
+        "layer thickness"       : 1.12e-3,
+        "total thickness"       : 1,
         "number of layers"      : 45,
         "use boundary layer"    : True,
         "BOI1"                  : 1000,
@@ -53,12 +52,11 @@ def meshgen_2D(a, b, config = {}):
         "BOI4"                  : 50,
         "BOI5"                  : 10,    
         "global size"           : 2000,
-        "threshold distance"    : 100,
         "protuberance location" : 1500,
-        "alpha"                 : radians(-6),
-        "L"                     : 3200
+        "alpha"                 : radians(0),
+        "L"                     : 3240
     }
-    
+
     # Read config
     config = {**default_config, **config}
     L = config["L"]
@@ -104,16 +102,18 @@ def meshgen_2D(a, b, config = {}):
     # Rocket 
     rocket_tags = []
     for x, y in zip(x_rocket, y_rocket):
-        tag = geom.addPoint(x + 3200, y, 0, config["wall size"])
+        tag = geom.addPoint(x + L, y, 0)
         rocket_tags.append(tag)
     
     # Hermite 
     hermite_tags = []
     for x, y in zip(x_hermite, y_hermite):
-        tag = geom.addPoint(x + config["protuberance location"], y + max(y_rocket), 0, config["wall size"]/2)
+        tag = geom.addPoint(x + config["protuberance location"], y + max(y_rocket), 0)
         hermite_tags.append(tag)
-    p6 = geom.addPoint(x_hermite[-1] + config["protuberance location"], y_hermite[0] + max(y_rocket), 0, config["wall size"]/2)
-    hermite_points = hermite_tags + [p6]
+    p6 = geom.addPoint(x_hermite[-1] + config["protuberance location"], y_hermite[-1] + max(y_rocket) - 10, 0)
+    p7 = geom.addPoint(x_hermite[-1] + config["protuberance location"] + 10, y_hermite[-1] + max(y_rocket) - 10, 0)
+    p8 = geom.addPoint(x_hermite[-1] + config["protuberance location"] + 10, y_hermite[0] + max(y_rocket), 0)
+    hermite_points = hermite_tags + [p6, p7, p8]
     
     # Displace points (tolerance)
     geom.translate([(0, tag) for tag in hermite_points], 0, -1, 0)
@@ -131,13 +131,14 @@ def meshgen_2D(a, b, config = {}):
     
     # Hermite
     lh = geom.addBSpline(hermite_tags)
-    l5 = geom.addLine(hermite_tags[-1], p6)
-    l6 = geom.addLine(p6, hermite_tags[0])
+    lch = geom.addCircleArc(hermite_tags[-1], p6, p7)
+    l5 = geom.addLine(p7, p8)
+    l6 = geom.addLine(p8, hermite_tags[0])
     
     # Curve loops
     cl1 = geom.addCurveLoop([l1, l2, l3, l4])
     cl2 = geom.addCurveLoop([lr, lf])
-    cl3 = geom.addCurveLoop([lh, l5, l6])
+    cl3 = geom.addCurveLoop([lh, lch, l5, l6])
     
     # Surface
     s = geom.addPlaneSurface([cl1])
@@ -146,11 +147,18 @@ def meshgen_2D(a, b, config = {}):
     
     # Fuse rocket w Hermite
     fusion, _ = geom.fuse([(2, s_rocket)], [(2, s_hermite)])
-    
+   
     # Rotate rocket
     geom.rotate(fusion, 0, 0, 0, 0, 0, 1, config["alpha"])
-    r_xmin, r_ymin, _, r_xmax, r_ymax, _ = gmsh.model.occ.getBoundingBox(2, fusion[0][1]) # Bounding box
-    
+
+    r_xmin1, r_ymin1, _1, r_xmax1, r_ymax1, _1 = gmsh.model.occ.getBoundingBox(2, fusion[0][1]) # Bounding box
+    r_xmin2, r_ymin2, _2, r_xmax2, r_ymax2, _2 = gmsh.model.occ.getBoundingBox(2, fusion[1][1])
+
+    r_xmin = np.min([r_xmin1, r_xmin2])
+    r_ymin = np.min([r_ymin1, r_ymin2])
+    r_xmax = np.max([r_xmax1, r_xmax2])
+    r_ymax = np.max([r_ymax1, r_ymax2])
+
     geom.synchronize()
     
     # Cut rocket from domain
@@ -165,7 +173,7 @@ def meshgen_2D(a, b, config = {}):
     
     farfield_curves = []
     wall_curves = []
-    eps = 1e-3  # Tol
+    eps = 10#1e-3  # Tol
     
     for dim, c_tag in boundary_curves:
         c_xmin, c_ymin, _, c_xmax, c_ymax, _ = gmsh.model.getBoundingBox(dim, c_tag)
@@ -217,28 +225,65 @@ def meshgen_2D(a, b, config = {}):
     msh.field.setNumber(BOI3, "VIn", config["BOI3"])
     msh.field.setNumber(BOI3, "Thickness", config["BOI3"])
     
-    # Combine BOIs
+    BOI4 = msh.field.add("Box")
+    msh.field.setNumber(BOI4, "XMin", -0.5*L)
+    msh.field.setNumber(BOI4, "XMax", 2.0*L)
+    msh.field.setNumber(BOI4, "YMin", -0.3*L)
+    msh.field.setNumber(BOI4, "YMax", 0.6*L)
+    msh.field.setNumber(BOI4, "VIn", config["BOI4"])
+    msh.field.setNumber(BOI4, "Thickness", config["BOI4"])
+    
+    BOI5 = msh.field.add("Box")
+    msh.field.setNumber(BOI5, "XMin", -0.1*L)
+    msh.field.setNumber(BOI5, "XMax", 1.2*L)
+    msh.field.setNumber(BOI5, "YMin", -0.25*L)
+    msh.field.setNumber(BOI5, "YMax", 0.2*L)
+    msh.field.setNumber(BOI5, "VIn", config["BOI5"])
+    msh.field.setNumber(BOI5, "Thickness", config["BOI5"])
+
+    # Distance
+    wall_distance = msh.field.add("Distance")
+    msh.field.setNumbers(wall_distance, "CurvesList", wall_curves)
+
+    msh.field.setNumber(wall_distance, "Sampling", 300)
+    
+    # Combine Sizings
     min = msh.field.add("Min")
-    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3])
+    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, BOI4, BOI5])
     msh.field.setAsBackgroundMesh(min)
+
+    point_tags_wall = []
+    points_list = []
+    for wall in wall_curves:
+        points = gmsh.model.getBoundary(
+                                        [(1, wall)],
+                                        combined=False,
+                                        oriented=False,
+                                        recursive=False
+                                    )
+        points_list.append(points)
+        for dim, p_tag in points:
+            point_tags_wall.append(p_tag)
+
+    point_tags_wall = list(set(point_tags_wall))
     
+    for p in point_tags_wall:
+        gmsh.model.mesh.setSize([(0, p)], config["wall size"])
+   
     # # Inflation layers field
-    use_boundary_layer = bool(config.get("use boundary layer", False))
-    if use_boundary_layer:
-        BL = msh.field.add("BoundaryLayer")
-        
-        # Curves to grown on layers
-        msh.field.setNumbers(BL, "CurvesList", wall_curves)
-        
-        # Inflation layers settings
-        msh.field.setNumber(BL, "hwall_n", config["layer thickness"])
-        msh.field.setNumber(BL, "Ratio", config["layer ratio"])
-        msh.field.setNumber(BL, "NbLayers", config["number of layers"])
-        msh.field.setNumber(BL, "Quads", 1)
-        msh.field.setAsBoundaryLayer(BL)
-    else:
-        print("Inflation Layers are desactivated")
+    BL = msh.field.add("BoundaryLayer")
     
+    # Curves to grown on layers
+    msh.field.setNumbers(BL, "CurvesList", wall_curves)
+    
+    # Inflation layers settings
+    msh.field.setNumber(BL, "hwall_n", config["layer thickness"])
+    msh.field.setNumber(BL, "Ratio", config["layer ratio"])
+    msh.field.setNumber(BL, "NbLayers", config["number of layers"])
+    msh.field.setNumber(BL, "Thickness", config["total thickness"])
+    msh.field.setNumber(BL, "Quads", 1)
+    msh.field.setAsBoundaryLayer(BL)
+    #gmsh.fltk.run()
     # Generate mesh
     msh.generate(2)
     
@@ -254,10 +299,11 @@ def meshgen_2D(a, b, config = {}):
     # Read save directory
     path = Path(__file__).parent / config["filename"]
     gmsh.write(str(path))
-    gmsh.fltk.run()  # Display the mesh in the GUI
+    #gmsh.fltk.run()
+    
     # Finalize
     gmsh.finalize()
-    return str(path)
+    return str(path), [x_hermite[0] + config["protuberance location"], x_hermite[-1] + config["protuberance location"] ]
 
 # ===========================================================
 # Test
@@ -266,16 +312,19 @@ if __name__ == "__main__":
     config = {
         "filename"              : "Mesh.su2",
         "wall size"             : 1,
-        "layer thickness"       : 1.68e-3,
-        "layer ratio"           : 1.2,
+        "layer ratio"           : 1.21,
+        "layer thickness"       : 1.12e-3,
+        "total thickness"       : 5,
         "number of layers"      : 45,
-        "BOI1"                  : 1000,
-        "BOI2"                  : 5000,
-        "BOI3"                  : 100,
-        "global size"           : 2000,
         "use boundary layer"    : True,
-        "alpha"                 : radians(0)
-    }
-    
-    meshgen_2D(1, 1, config = config)
+        "BOI1"                  : 1000,
+        "BOI2"                  : 300,
+        "BOI3"                  : 100,
+        "BOI4"                  : 50,
+        "BOI5"                  : 20,    
+        "global size"           : 2000,
+        "protuberance location" : 1500,
+        "alpha"                 : radians(0),
+        "L"                     : 3240
+    }  
 
