@@ -197,24 +197,24 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
 
     metric = w_Cd*Cd_final + w_grad*Cp_grad + w_int*Cp_sum
 
-    if eval_count % 10 == 0:
-        data = {
-            "Evaluation": eval_count,
-            "Parameter_1": parameters[0],
-            "Parameter_2": parameters[1],
-            "Cd": Cd_final,
-            "Cp_integral": Cp_sum,
-            "Cp_gradient": Cp_grad,
-            "Objective": metric
-        }
+    #if eval_count % 10 == 0:
+    data = {
+        "Evaluation": eval_count,
+        "Parameter_1": parameters[0],
+        "Parameter_2": parameters[1],
+        "Cd": Cd_final,
+        "Cp_integral": Cp_sum,
+        "Cp_gradient": Cp_grad,
+        "Objective": metric
+    }
 
-        History = pd.DataFrame([data])
+    History = pd.DataFrame([data])
 
-        History.to_csv(
-            "optimization_history.csv",
-            mode="a",
-            header=not os.path.exists("optimization_history.csv"),
-            index=False
+    History.to_csv(
+        "optimization_history.csv",
+        mode="a",
+        header=not os.path.exists("optimization_history.csv"),
+        index=False
         )
     
     return metric
