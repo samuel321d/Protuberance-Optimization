@@ -196,7 +196,7 @@ def meshgen_3D(config=None):
             size_fields.append(box_field)
 
         wall_distance = mesh.field.add("Distance")
-        mesh.field.setNumbers(wall_distance, "FacesList", wall_surfaces)
+        mesh.field.setNumbers(wall_distance, "SurfacesList", wall_surfaces)
         mesh.field.setNumber(wall_distance, "Sampling", 100)
 
         wall_threshold = mesh.field.add("Threshold")

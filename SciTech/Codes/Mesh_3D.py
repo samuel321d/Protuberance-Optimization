@@ -69,7 +69,7 @@ def meshgen_3D(config={}):
     # ===========================================================
     # Import rocket geometry
     rocket_path = Path(__file__).parent / "Rocket.step"
-    occm.importShapes(str(rocket_path), highestDimOnly=True)
+    rocket = occm.importShapes(str(rocket_path), highestDimOnly=True)
 
     occm.synchronize()
 
@@ -85,13 +85,12 @@ def meshgen_3D(config={}):
 
     # Grow inflation layers
     rocket_surfaces = gmsh.model.getEntities(2)
-    #rocket_volumes = gmsh.model.getEntities(3)
     extbl = geom.extrudeBoundaryLayer(rocket_surfaces, [1] * N, heights, True)
 
     geom.synchronize()
 
     # Remove rocket
-    #occm.remove(rocket_volumes, recursive=False)
+    occm.remove(rocket, recursive = True)
 
     # BL top faces
     top = []
@@ -101,9 +100,9 @@ def meshgen_3D(config={}):
 
     # Farfield
     # Bounding box
-    xmin, xmax = -4, 4
-    ymin, ymax = -4, 4
-    zmin, zmax = -4, 4
+    xmin, xmax = -4000, 4000
+    ymin, ymax = -4000, 4000
+    zmin, zmax = -4000, 4000
 
     p1 = geom.addPoint(xmin, ymin, zmin)
     p2 = geom.addPoint(xmax, ymin, zmin)
@@ -142,7 +141,6 @@ def meshgen_3D(config={}):
 
     # Surface loop
     b = [s[1] for s in top]
-    b = []
     b.extend([si, ss, sl1, sl2, sl3, sl4])
     sl = geom.addSurfaceLoop(b)
 
@@ -154,6 +152,7 @@ def meshgen_3D(config={}):
     gmsh.fltk.run()
 
     # Generate mesh
+    gmsh.option.setNumber("Mesh.Algorithm3D", 4)
     msh.generate(3)
 
     # ===========================================================
@@ -193,3 +192,22 @@ if __name__ == "__main__":
     }
 
     meshgen_3D(config=config)
+
+    import meshio
+    import shutil
+    import subprocess
+
+    mesh = meshio.read(Path(__file__).parent / config["filename"])
+    mesh.cell_sets.clear()
+    vtu_path = Path(Path(__file__).parent / "Mesh.vtu").resolve()
+    meshio.write(vtu_path, mesh)
+
+    paraview = shutil.which("paraview") or shutil.which("paraview.exe")
+    if paraview is None:
+        paraview = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
+        if not Path(paraview).is_file():
+            raise FileNotFoundError(
+                "ParaView was not found. Add paraview.exe to PATH or update its path in BL.py."
+            )
+
+    subprocess.Popen([paraview, str(vtu_path)])
