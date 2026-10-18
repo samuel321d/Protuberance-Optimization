@@ -66,7 +66,7 @@ def run_solver(config_file, output_files_path, n_processors=4):
     # Execution on terminal
     try:
         # python3 parallel_computation.py -f Rocket_2d.cfg -n 8
-        cmd = ["python3", "parallel_computation.py", "-f" , config_file, "-n" ,str(n_processors)]
+        cmd =[MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file] 
         subprocess.run(
             cmd,
             cwd=output_files_path,
@@ -86,7 +86,7 @@ def run_solver(config_file, output_files_path, n_processors=4):
 
 
 
-def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral):
+def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral, x_min, x_max):
     """
     This function execute a python script runing the commands on paraview to export the pressure coefficient over a surface
 
@@ -98,7 +98,7 @@ def paraview_caller(Python_file, input_file, output_file_cp, output_file_integra
     """
     
     result = subprocess.run(
-        [PVPYTHON, Python_file, input_file, output_file_cp, output_file_integral],
+        [PVPYTHON, Python_file, input_file, output_file_cp, output_file_integral, str(x_min), str(x_max)],
         capture_output=True,
         text=True
     )
@@ -125,14 +125,15 @@ mesh_file_name = "Mesh.su2"
 #========================================================================================
 # Mesh generation function call
 #========================================================================================
-mesh_file_path = meshgen_2D(a, b, config = {"filename" : mesh_file_name, "BOI5" : 10})
+mesh_file_path, hermite_points = meshgen_2D(a, b, config = {"filename" : mesh_file_name})
 
+x_min, x_max = hermite_points
 #========================================================================================
 
 #========================================================================================
 # Solver call
 #========================================================================================
-surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=8)
+surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=4)
 #========================================================================================
 
 
@@ -145,7 +146,7 @@ Cp_integral_path = "Cp_integral.csv"
 surface_sol_file = "surface_flow.vtu"
 
 # Integral of Cp along the curve and paraview function execution
-paraview_caller(paraview_script, surface_sol_file, Cp_csv_path, Cp_integral_path)
+paraview_caller(paraview_script, surface_sol_file, Cp_csv_path, Cp_integral_path, x_min, x_max)
 Cp_sum_csv  =  pd.read_csv(Cp_integral_path)
 Cp_sum = Cp_sum_csv["Pressure_Coefficient"][0]
 

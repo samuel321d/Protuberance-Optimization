@@ -89,7 +89,7 @@ def run_solver(config_file, output_files_path, n_processors=4):
 
 
 
-def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral):
+def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral, x_min, x_max):   
     """
     This function execute a python script runing the commands on paraview to export the pressure coefficient over a surface
 
@@ -101,7 +101,7 @@ def paraview_caller(Python_file, input_file, output_file_cp, output_file_integra
     """
     
     result = subprocess.run(
-        [PVPYTHON, Python_file, input_file, output_file_cp, output_file_integral],
+        [PVPYTHON, Python_file, input_file, output_file_cp, output_file_integral, str(x_min), str(x_max)],
         capture_output=True,
         text=True
     )
@@ -112,8 +112,25 @@ def paraview_caller(Python_file, input_file, output_file_cp, output_file_integra
 # Objective function for the optimization process
 #========================================================================================
 
+#========================================================================================
+# Optimization History Verification
+#========================================================================================
 history = []
-eval_count = 0
+HISTORY_CSV = "optimization_history.csv"
+
+def load_history():
+    if os.path.exists(HISTORY_CSV):
+        return pd.read_csv(HISTORY_CSV)
+    return pd.DataFrame()
+
+hist_df = load_history()
+
+print(hist_df.head())
+
+eval_count = len(hist_df)
+
+cache = {(round(r.Parameter_1, 10), round(r.Parameter_2, 10)): r.Objective for r in hist_df.itertuples()} 
+
 
 def objective_fun(parameters, config , mesh,  folder, n_processors):
 
@@ -128,12 +145,18 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
     - metric: calculated metric based on Cp distribution, Cd and Cp integral; used for optimization
     """
 
+    
+        
     global eval_count
     eval_count += 1
     #========================================================================================
     # HERMITE PARAMETERS
     #========================================================================================
     a, b = parameters
+    
+    print(20*"=", "Parameters", 20*"=")
+    print(f"a = {a} ; b = {b}")
+    print(20*"=", 10*"=", 20*"=")
     #========================================================================================
     # Config and mesh files 
     #========================================================================================
@@ -144,8 +167,9 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
     #========================================================================================
     # Mesh generation function call
     #========================================================================================
-    mesh_file_path = meshgen_2D(a, b, config = {"filename" : mesh_file_name})
+    mesh_file_path, hermite_points = meshgen_2D(a, b, config = {"filename" : mesh_file_name})
 
+    x_min, x_max = hermite_points
     #========================================================================================
 
     #========================================================================================
@@ -165,7 +189,7 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
     surface_sol_file = "surface_flow.vtu"
 
     # Integral of Cp along the curve and paraview function execution
-    paraview_caller(paraview_script, surface_sol_file, Cp_csv_path, Cp_integral_path)
+    paraview_caller(paraview_script, surface_sol_file, Cp_csv_path, Cp_integral_path, x_min, x_max)
     Cp_sum_csv  =  pd.read_csv(Cp_integral_path)
     Cp_sum = Cp_sum_csv["Pressure_Coefficient"][0]
 
@@ -219,6 +243,16 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
     
     return metric
 
+
+
+def objective_cached(parameters, *args):
+    key = (round(float(parameters[0]), 10), round(float(parameters[1]), 10))
+    if key in cache:
+        return cache[key]
+    val = objective_fun(parameters, *args)
+    cache[key] = val
+    return val
+
 #========================================================================================
 
 
@@ -230,15 +264,30 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
 # Configuration of optimization
 x0 = np.array([1, 1])               # Initial values
 bounds = ([0.5, 3.0], [0.5, 3.0])   # Bounds
+n = len(x0)
 
 config_file = "Rocket_2d.cfg"
 mesh_file = "Mesh.su2"
 n_processors = 4
 
+options = {'xatol': 1e-5, 'disp': True, 'maxiter':10000}
+
+
+if len(hist_df) >= n+1:
+    best = hist_df.nsmallest(n+1,"Objective")
+    simplex = best[["Parameter_1", "Parameter_2"]].to_numpy()
+
+    if np.linalg.matrix_rank(simplex[1:] - simplex[0]) == n:
+        options["initial_simplex"] = simplex
+        x0 = simplex[0]
+        print("Resuming optimization")
+    
+
+
 # Optimization
-optim = minimize(objective_fun, x0, args = (config_file, mesh_file, folder, n_processors),
+optim = minimize(objective_cached, x0, args = (config_file, mesh_file, folder, n_processors),
                 method = "Nelder-Mead", bounds = bounds,
-                options={'xatol': 1e-5, 'disp': True, 'maxiter':10000})
+                options = options)
 
 
 if not optim.success:
