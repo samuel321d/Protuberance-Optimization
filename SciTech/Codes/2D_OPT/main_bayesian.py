@@ -82,8 +82,8 @@ def run_solver(config_file, output_files_path, n_processors=4):
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"SU2 falló con código {e.returncode}") from e
 
-    surface_output_file = os.path.join(output_files_path, "surface_flow.vtu")
-    volume_output_file = os.path.join(output_files_path, "flow.vtu")
+    surface_output_file = os.path.join(output_files_path, "surface_flow_bayesian.vtu")
+    volume_output_file = os.path.join(output_files_path, "flow_bayesian.vtu")
 
     for f in (surface_output_file, volume_output_file):
         if not os.path.exists(f):
@@ -119,7 +119,16 @@ def paraview_caller(Python_file, input_file, output_file_cp, output_file_integra
 history = []
 eval_count = 0
 
-def objective_fun(parameters, config , mesh,  folder, n_processors):
+# Configuration of optimization
+x0 = [[2.037, 2.037]]              # Initial values
+bounds = [Real(0.5, 3.0, name="a"), Real(0.5, 3.0, name="b")]  # Bounds
+
+config_file = "Rocket_2d_bayesian.cfg"
+mesh_file = "Mesh_bayesian.su2"
+n_processors = 3
+
+
+def objective_fun(parameters):
 
     print(100*"=")
     print(f"Hermite parameters: a = {parameters[0]}; b = {parameters[1]}")
@@ -144,8 +153,8 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
     #========================================================================================
     # Config and mesh files 
     #========================================================================================
-    config_file = config
-    mesh_file_name = mesh
+    
+    mesh_file_name = mesh_file
     #========================================================================================
 
     #========================================================================================
@@ -234,13 +243,7 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
 # ===========================================================
 
 
-# Configuration of optimization
-x0 = np.array([2.037, 2.037])              # Initial values
-bounds = ([0.5, 3.0], [0.5, 3.0])   # Bounds
 
-config_file = "Rocket_2d_bayesian.cfg"
-mesh_file = "Mesh_bayesian.su2"
-n_processors = 4
 
 # Optimization
 # bayesian
@@ -261,32 +264,47 @@ kwargs = {
 
 """
 checkpoint_saver = CheckpointSaver("./checkpoint.pkl", compress=9) # keyword arguments will be passed to `skopt.dump`
+checkpoint_path = "./checkpoint.pkl"
+N_TOTAL = 30
 
-
-
-optim = gp_minimize(func=lambda x: objective_fun(x, config_file, mesh_file, folder, n_processors),
-                    dimensions= bounds,
-                    x0 = x0,
-                    n_calls = 9,
-                    acq_func = "EI",
-                    n_random_starts = 5,
-                    callback = [checkpoint_saver],
-                    random_state = 42
-                    )
-
-
-
-
-if not optim.success:
-    # Verify optimization success
-    print("The optimization failed", optim.message)
+if os.path.exists(checkpoint_path):
+    res = load(checkpoint_path)
+    x0 = res.x_iters
+    y0 = list(res.func_vals)
+    n_done = len(y0)
+    n_initial = 0
+    print(f"Reanudando desde {n_done} evaluaciones")
 else:
-    # Extract optimum value
-    a = optim.x[0]
-    b = optim.x[1]
-    print(100*"=", "Results", 100*"=")
-    print("Optimum parameters")
-    print(f"a = {a}; b = {b}")
-    print(f"Final value of objective function: =  {optim.fun}")
-    print(f"Models for surrogae: {optim.models2}")
-    print(100*"=",10*"=", 100*"=")
+    x0 = [[2.037, 2.037]]
+    y0 = None
+    n_done = 0
+    n_initial = 8
+    print("Inizializating")
+
+optim = gp_minimize(
+    objective_fun,
+    dimensions=bounds,
+    x0=x0,
+    y0=y0,
+    n_calls=N_TOTAL - n_done if n_done else N_TOTAL,
+    n_initial_points=n_initial,
+    initial_point_generator="sobol",
+    acq_func="EI",
+    callback=[checkpoint_saver],
+    random_state=42,
+)
+
+
+
+
+
+
+# Extract optimum value
+a = optim.x[0]
+b = optim.x[1]
+print(100*"=", "Results", 100*"=")
+print("Optimum parameters")
+print(f"a = {a}; b = {b}")
+print(f"Final value of objective function: =  {optim.fun}")
+print(f"Models for surrogae: {optim.models}")
+print(100*"=",10*"=", 100*"=")
