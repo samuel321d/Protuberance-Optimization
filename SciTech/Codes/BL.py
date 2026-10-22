@@ -97,6 +97,8 @@ v = geom.addVolume([sl])
 
 geom.synchronize()
 
+gmsh.option.setNumber("Mesh.Algorithm3D", 4)
+
 # Finalize
 gmsh.model.mesh.generate(3)
 gmsh.write("BL.msh")
