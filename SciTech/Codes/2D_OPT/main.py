@@ -125,11 +125,10 @@ def load_history():
 
 hist_df = load_history()
 
-print(hist_df.head())
 
 eval_count = len(hist_df)
 
-cache = {(round(r.Parameter_1, 10), round(r.Parameter_2, 10)): r.Objective for r in hist_df.itertuples()} 
+cache = {(round(r.Parameter_1, 4), round(r.Parameter_2, 4)): r.Objective for r in hist_df.itertuples()} 
 
 
 def objective_fun(parameters, config , mesh,  folder, n_processors):
@@ -246,7 +245,7 @@ def objective_fun(parameters, config , mesh,  folder, n_processors):
 
 
 def objective_cached(parameters, *args):
-    key = (round(float(parameters[0]), 10), round(float(parameters[1]), 10))
+    key = (round(float(parameters[0]), 4), round(float(parameters[1]), 4))
     if key in cache:
         return cache[key]
     val = objective_fun(parameters, *args)
@@ -262,7 +261,7 @@ def objective_cached(parameters, *args):
 
 
 # Configuration of optimization
-x0 = np.array([1, 1])               # Initial values
+x0 = np.array([2.037, 2.037])               # Initial values
 bounds = ([0.5, 3.0], [0.5, 3.0])   # Bounds
 n = len(x0)
 
@@ -270,7 +269,7 @@ config_file = "Rocket_2d.cfg"
 mesh_file = "Mesh.su2"
 n_processors = 4
 
-options = {'xatol': 1e-5, 'disp': True, 'maxiter':10000}
+options = {'fatol': 1e-3, 'disp': True, 'maxiter':1000}
 
 
 if len(hist_df) >= n+1:

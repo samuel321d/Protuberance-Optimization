@@ -104,13 +104,13 @@ gmsh.finalize()
 
 import meshio
 
+# Convert to VTU
 mesh = meshio.read("BL.msh")
 mesh.cell_sets.clear()
 vtu_path = Path("BL.vtu").resolve()
 meshio.write(vtu_path, mesh)
 
-
-
+# Open mesh in ParaView
 paraview = shutil.which("paraview") or shutil.which("paraview.exe")
 if paraview is None:
     paraview = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"

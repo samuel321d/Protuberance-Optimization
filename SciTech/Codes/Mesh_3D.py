@@ -178,7 +178,7 @@ def meshgen_3D(config={}):
 # ===========================================================
 if __name__ == "__main__":
     config = {
-        "filename": "Mesh.su2",
+        "filename": "Mesh.msh",
         "wall size": 10,
         "layer thickness": 0.005,
         "total thickness": 10,
