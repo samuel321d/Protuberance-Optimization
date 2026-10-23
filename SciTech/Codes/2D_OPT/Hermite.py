@@ -74,6 +74,7 @@ if __name__ == "__main__":
     
     profile = generate_hermite_paper_fairing(zeta1_input, zeta2_input, nps=30)
 
+"""
 def find_param_bounds(zeta1, zeta2, nps=30):
     x0, x1 = 0.0, 87.0
     y0, y1 = 0.0, 22.0
@@ -244,3 +245,4 @@ for a in ax.flat:
 plt.tight_layout()
 plt.show()
 
+"""
