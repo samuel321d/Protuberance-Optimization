@@ -26,6 +26,7 @@ from Mesh_2D import meshgen_2D
 import shutil
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+import time
 
 #========================================================================================
 # PATH DEFINITION
@@ -46,45 +47,76 @@ os.chdir(folder)
 
 
 
-def run_solver(config_file, output_files_path, n_processors=4):
-    """
-    Functions that calls SU2 and runs a config_file in parallel
-    Inputs:
-    - config_file: configuration file name
-    - output_files_path: folder where solution files will be stored
-    -n_processors: number of processors to use in parallel
-    Outputs:
-    - surface_output_file: path to the surface flow output file
-    - volume_output_file: path to the volume flow output file    
+def plot_residuals_live(history_file, ax, lines):
+    """Lee history.csv y actualiza las curvas de residuales."""
+    if not os.path.exists(history_file):
+        return
+    try:
+        df = pd.read_csv(history_file, skipinitialspace=True)
+        
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+        return  
 
-    """
-    # Files paths and folder definitions    
+    df.columns = df.columns.str.strip().str.replace('"', '', regex=False)
+    res_cols = [c for c in df.columns if c.startswith(("rms[", "res["))]
+    if df.empty or not res_cols:
+        return
+    if len(df) < 5:
+        return 
+    df = df.iloc[5:]
+    x = df.index 
+    for col in res_cols:
+        if col not in lines:
+            (lines[col],) = ax.plot([], [], label=col)
+            ax.legend(loc="upper right", fontsize=8)
+        lines[col].set_data(x, df[col])
+
+    ax.relim()
+    ax.autoscale_view()
+
+
+def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
     config_file = os.path.abspath(config_file)
     output_files_path = os.path.abspath(output_files_path)
+    history_file = os.path.join(output_files_path, "history.csv")
     print(f"Running SU2 with configuration file: {config_file}")
 
-    # Execution on terminal
+    cmd = [MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file]
+    su2_process = subprocess.Popen(cmd, cwd=output_files_path)
+
+    # Figura interactiva
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.set_xlabel("Iter")
+    ax.set_ylabel("log10(Residual)")
+    ax.set_title("Residuals")
+    ax.grid(True)
+    lines = {}
+
     try:
-        # python3 parallel_computation.py -f Rocket_2d.cfg -n 8
-        cmd =[MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file] 
-        subprocess.run(
-            cmd,
-            cwd=output_files_path,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"SU2 falló con código {e.returncode}") from e
+        while su2_process.poll() is None:
+            plot_residuals_live(history_file, ax, lines)
+            plt.pause(plot_every)   # reemplaza time.sleep y mantiene la GUI viva
+        plot_residuals_live(history_file, ax, lines)  # última actualización
+        plt.pause(0.1)
+    except KeyboardInterrupt:
+        su2_process.terminate()
+        raise
+    finally:
+        plt.ioff()
+
+    if su2_process.returncode != 0:
+        raise RuntimeError(f"SU2 falló con código {su2_process.returncode}")
+
+    plt.show()  # deja la gráfica final abierta (bloquea hasta cerrarla)
 
     surface_output_file = os.path.join(output_files_path, "surface_flow.vtu")
     volume_output_file = os.path.join(output_files_path, "flow.vtu")
-
     for f in (surface_output_file, volume_output_file):
         if not os.path.exists(f):
             raise FileNotFoundError(f"SU2 terminó pero no se generó {f}")
 
     return surface_output_file, volume_output_file
-
-
 
 def paraview_caller(Python_file, input_file, output_file_cp, output_file_integral, x_min, x_max):
     """
@@ -133,9 +165,9 @@ x_min, x_max = hermite_points
 #========================================================================================
 # Solver call
 #========================================================================================
-surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=4)
+surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=2)
 #========================================================================================
-
+"""
 
 
 paraview_script = "Paraview_post.py"
@@ -167,6 +199,6 @@ history_data = pd.read_csv(os.path.join(folder, 'history.csv'))
 Cd_final = np.array(history_data[ '       "CD"       '])[-1]
 
 
-
 print(f"Integral of Cp along the surface: {Cp_sum}")
 print(f"Gradient of Cp along the surface: {Cp_grad}")
+"""
