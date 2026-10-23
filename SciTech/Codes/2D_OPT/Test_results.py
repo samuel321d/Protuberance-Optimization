@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-history = pd.read_csv("history_mesh2.csv")
+history = pd.read_csv("history.csv")
 
 print(history.head(5))
 
