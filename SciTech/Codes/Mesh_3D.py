@@ -33,7 +33,6 @@ def meshgen_3D(config = {}):
     # Default configuration
     default_config = {
         "filename"           : "Mesh.su2",
-        "wall size"          : 1,
         "layer ratio"        : 1.2,
         "layer thickness"    : 9.75e-7*1000,
         "number of layers"   : 40,
@@ -41,7 +40,6 @@ def meshgen_3D(config = {}):
         "BOI2"               : 300,
         "BOI3"               : 100,
         "global size"        : 2000,
-        "alpha"              : radians(6),
         "L"                  : 3200
     }
 
@@ -65,8 +63,8 @@ def meshgen_3D(config = {}):
     # Geometry
     # ===========================================================
     # Far-field
-    cylinder_ff = occm.addCylinder(0, 0, 0, 20*L, 0, 0, 15*L)
-    sphere_ff = occm.addSphere(0, 0, 0, 15*L)
+    cylinder_ff = occm.addCylinder(0, 0, 0, 15*L, 0, 0, 12*L)
+    sphere_ff = occm.addSphere(0, 0, 0, 12*L)
 
     occm.synchronize()
 
@@ -80,7 +78,7 @@ def meshgen_3D(config = {}):
     farfield_surfaces = [tag for dim, tag in farfield_boundary if dim == 2]
 
     # Remove farfield volumes
-    occm.remove(farfield, recursive=False)
+    occm.remove(farfield, recursive = False)
 
     occm.synchronize()
 
@@ -158,7 +156,6 @@ def meshgen_3D(config = {}):
     # ===========================================================
     gmsh.option.setNumber("Mesh.Algorithm3D", 4)
     gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
-    msh.generate(3)
 
     # BOIs
     BOI1 = msh.field.add("Box")
@@ -204,12 +201,15 @@ def meshgen_3D(config = {}):
     # Combine Sizings
     min = msh.field.add("Min")
     msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, BOI4, BOI5])
-    msh.field.setAsBackgroundMesh(min)
+    #msh.field.setAsBackgroundMesh(min)
 
     # If errors
     _, volume_elements, _ = msh.getElements(3, v)
     if not any(len(elements) for elements in volume_elements):
         raise RuntimeError("Gmsh did not generate 3D elements in the fluid volume.")
+
+    # Generate mesh
+    msh.generate(3)
 
     # ===========================================================
     # Save results
@@ -234,16 +234,14 @@ def meshgen_3D(config = {}):
 if __name__ == "__main__":
     config = {
         "filename"              : "Mesh.msh",
-        "wall size"             : 5,
         "layer thickness"       : 1.12e-3,
         "layer ratio"           : 1.21,
         "total thickness"       : 10,
         "number of layers"      : 45,
         "BOI1"                  : 2000,
-        "BOI2"                  : 5000,
-        "BOI3"                  : 100,
+        "BOI2"                  : 1000,
+        "BOI3"                  : 500,
         "global size"           : 100,
-        "alpha"                 : radians(0),
         "L"                     : 300
     }
 
