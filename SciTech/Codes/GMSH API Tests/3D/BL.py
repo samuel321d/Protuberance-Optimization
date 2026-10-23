@@ -1,3 +1,7 @@
+import shutil
+import subprocess
+from pathlib import Path
+
 import gmsh
 
 # Initialize
@@ -24,9 +28,13 @@ gmsh.model.occ.synchronize()
 cyl_surfaces = gmsh.model.getEntities(2)
 
 # Boundary layer
-extbl = gmsh.model.geo.extrudeBoundaryLayer([(2, 1), (2, 2)], [1] * N, heights, True)
+extbl = gmsh.model.geo.extrudeBoundaryLayer(cyl_surfaces, [1] * N, heights, True)
 
 gmsh.model.geo.synchronize()
+
+occm = gmsh.model.occ.remove([(3, cylinder)], recursive = True)
+
+gmsh.model.occ.synchronize()
 
 # BL top faces
 top = []
@@ -34,14 +42,10 @@ for i in range(1, len(extbl)):
     if extbl[i][0] == 3:
         top.append(extbl[i-1])
 
-# BL curve loop
-bnd = gmsh.model.getBoundary(top)
-cl2 = geom.addCurveLoop([c[1] for c in bnd])
-
 # Bounding box
 xmin, xmax = -1.5, 1.5
 ymin, ymax = -1.5, 1.5
-zmin, zmax = 0.0, 4.0
+zmin, zmax = -4, 4.0
 
 # Symmetry face
 p1 = geom.addPoint(xmin, ymin, zmin)
@@ -55,7 +59,7 @@ l4 = geom.addLine(p4, p1)
 
 # BL hole
 cl3 = geom.addCurveLoop([l1, l2, l3, l4])
-s2 = geom.addPlaneSurface([cl3, cl2])
+s2 = geom.addPlaneSurface([cl3])
 
 # Upper face
 p5 = geom.addPoint(xmin, ymin, zmax)
@@ -93,7 +97,28 @@ v = geom.addVolume([sl])
 
 geom.synchronize()
 
+gmsh.option.setNumber("Mesh.Algorithm3D", 4)
+
 # Finalize
 gmsh.model.mesh.generate(3)
 gmsh.write("BL.msh")
 gmsh.finalize()
+
+import meshio
+
+# Convert to VTU
+mesh = meshio.read("BL.msh")
+mesh.cell_sets.clear()
+vtu_path = Path("BL.vtu").resolve()
+meshio.write(vtu_path, mesh)
+
+# Open mesh in ParaView
+paraview = shutil.which("paraview") or shutil.which("paraview.exe")
+if paraview is None:
+    paraview = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
+    if not Path(paraview).is_file():
+        raise FileNotFoundError(
+            "ParaView was not found. Add paraview.exe to PATH or update its path in BL.py."
+        )
+
+subprocess.Popen([paraview, str(vtu_path)])

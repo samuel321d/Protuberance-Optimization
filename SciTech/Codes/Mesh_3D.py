@@ -182,34 +182,34 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOI3, "VIn", config["BOI3"])
     msh.field.setNumber(BOI3, "Thickness", config["BOI3"])
     
-    BOI4 = msh.field.add("Box")
-    msh.field.setNumber(BOI4, "XMin", -0.5*L)
-    msh.field.setNumber(BOI4, "XMax", 2.0*L)
-    msh.field.setNumber(BOI4, "YMin", -0.3*L)
-    msh.field.setNumber(BOI4, "YMax", 0.6*L)
-    msh.field.setNumber(BOI4, "VIn", config["BOI4"])
-    msh.field.setNumber(BOI4, "Thickness", config["BOI4"])
+    # BOI4 = msh.field.add("Box")
+    # msh.field.setNumber(BOI4, "XMin", -0.5*L)
+    # msh.field.setNumber(BOI4, "XMax", 2.0*L)
+    # msh.field.setNumber(BOI4, "YMin", -0.3*L)
+    # msh.field.setNumber(BOI4, "YMax", 0.6*L)
+    # msh.field.setNumber(BOI4, "VIn", config["BOI4"])
+    # msh.field.setNumber(BOI4, "Thickness", config["BOI4"])
     
-    BOI5 = msh.field.add("Box")
-    msh.field.setNumber(BOI5, "XMin", -0.1*L)
-    msh.field.setNumber(BOI5, "XMax", 1.2*L)
-    msh.field.setNumber(BOI5, "YMin", -0.25*L)
-    msh.field.setNumber(BOI5, "YMax", 0.2*L)
-    msh.field.setNumber(BOI5, "VIn", config["BOI5"])
-    msh.field.setNumber(BOI5, "Thickness", config["BOI5"])
+    # BOI5 = msh.field.add("Box")
+    # msh.field.setNumber(BOI5, "XMin", -0.1*L)
+    # msh.field.setNumber(BOI5, "XMax", 1.2*L)
+    # msh.field.setNumber(BOI5, "YMin", -0.25*L)
+    # msh.field.setNumber(BOI5, "YMax", 0.2*L)
+    # msh.field.setNumber(BOI5, "VIn", config["BOI5"])
+    # msh.field.setNumber(BOI5, "Thickness", config["BOI5"])
 
     # Combine Sizings
     min = msh.field.add("Min")
-    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3, BOI4, BOI5])
+    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3])
     #msh.field.setAsBackgroundMesh(min)
+
+    # Generate mesh
+    msh.generate(3)
 
     # If errors
     _, volume_elements, _ = msh.getElements(3, v)
     if not any(len(elements) for elements in volume_elements):
         raise RuntimeError("Gmsh did not generate 3D elements in the fluid volume.")
-
-    # Generate mesh
-    msh.generate(3)
 
     # ===========================================================
     # Save results

@@ -13,6 +13,9 @@ This file contains the function to generate the 3D mesh of the rocket.
 # 3rd party imports
 from pathlib import Path
 from math import radians
+import shutil
+import subprocess
+import tempfile
 import gmsh
 
 # ===========================================================
@@ -106,10 +109,15 @@ def meshgen_3D(config = {}):
 
     geom.synchronize()
 
+    # Export the boundary markers required by SU2's mesh reader.
+    gmsh.model.addPhysicalGroup(2, farfield_surfaces, name = "FARFIELD")
+    gmsh.model.addPhysicalGroup(2, rocket_surfaces, name = "WALL")
+    gmsh.model.addPhysicalGroup(3, [v], name = "FLUID")
+
     # ===========================================================
     # Meshing
     # ===========================================================
-    gmsh.option.setNumber("Mesh.Algorithm3D", 4)
+    #gmsh.option.setNumber("Mesh.Algorithm3D", 4)
     gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
@@ -218,7 +226,7 @@ def meshgen_3D(config = {}):
 
     # Combine Sizings
     background = msh.field.add("Min")
-    msh.field.setNumbers(background, "FieldsList", [BOI4])
+    msh.field.setNumbers(background, "FieldsList", [BOI1, BOI2, BOI3, BOI4])
     msh.field.setAsBackgroundMesh(background)
 
     # Generate mesh
@@ -256,9 +264,9 @@ if __name__ == "__main__":
         "layer ratio"           : 1.21,
         "total thickness"       : 10,
         "number of layers"      : 45,
-        "BOI1"                  : 3000,
-        "BOI2"                  : 2000,
-        "BOI3"                  : 1000,
+        "BOI1"                  : 2000,
+        "BOI2"                  : 1000,
+        "BOI3"                  : 5000,
         "BOI4"                  : 100,
         "global size"           : 4000,
         "L"                     : 3240
@@ -266,30 +274,59 @@ if __name__ == "__main__":
 
     meshgen_3D(config = config)
 
-    import subprocess
-    import os
+    # Calculate metrics with SU2_CFD
 
-    # Ruta a tu ParaView en Windows (ajústala a tu versión instalada)
+    # Paths
+    mesh_path = Path(__file__).parent / config["filename"]
+    su2_cfd_path = shutil.which("SU2_CFD")
     paraview_path = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
-    
-    try:
-        # 1. Ejecutar el comando SU2_SOL para convertir la malla
-        # Esto buscará 'mesh_proyecto.su2' y creará un archivo llamado 'mesh_proyecto.vtk' (o similar)
-        print("Convirtiendo malla a formato ParaView...")
-        subprocess.run(["SU2_SOL", config["filename"], "-m"], check=True)
-        
-        # 2. SU2_SOL genera por defecto un archivo con extensión .vtk
-        archivo_vtk = "mesh_proyecto.vtk" 
-        
-        # 3. Lanzar ParaView automáticamente
-        if os.path.exists(archivo_vtk) and os.path.exists(paraview_path):
-            print(f"Abriendo ParaView con el archivo {archivo_vtk}...")
-            subprocess.Popen([paraview_path, archivo_vtk])
-        else:
-            print("Conversión completada, pero verifica que las rutas de los archivos sean correctas.")
+    if su2_cfd_path is None:
+        raise FileNotFoundError("SU2_CFD was not found. Add the SU2 bin directory to PATH.")
+    if not Path(paraview_path).is_file():
+        raise FileNotFoundError(f"ParaView was not found at {paraview_path}")
 
-    except subprocess.CalledProcessError:
-        print("❌ Error al ejecutar SU2_SOL. Asegúrate de que SU2 esté en las Variables de Entorno (PATH).")
+    # Keep SU2's temporary config and output files until ParaView is closed.
+    with tempfile.TemporaryDirectory(
+        prefix = "su2_mesh_quality_",
+        dir = mesh_path.parent,
+    ) as output_dir:
+        output_dir = Path(output_dir)
+        cfg_path = output_dir / "mesh_quality.cfg"
+        quality_vtu = output_dir / "quality.vtu"
+        config_text = (
+            f"MESH_FILENAME = ../{mesh_path.name}\n"
+            "MESH_FORMAT = SU2\n"
+            "SOLVER = EULER\n"
+            "MATH_PROBLEM = DIRECT\n"
+            "MARKER_EULER = ( WALL )\n"
+            "MARKER_FAR = ( FARFIELD )\n"
+            "CONV_NUM_METHOD_FLOW = JST\n"
+            "CONV_FIELD = RMS_DENSITY\n"
+            "ITER = 0\n"
+            "MGLEVEL = 0\n"
+            "CONV_FILENAME = quality_history\n"
+            "VOLUME_FILENAME = quality\n"
+            "VOLUME_OUTPUT = ( COORDINATES, MESH_QUALITY )\n"
+            "OUTPUT_FILES = ( PARAVIEW )\n"
+        )
+        cfg_path.write_text(config_text, encoding = "ascii")
+
+        print("Calculating mesh quality with SU2_CFD...")
+        subprocess.run(
+            [su2_cfd_path, cfg_path.name],
+            cwd = output_dir,
+            check = True,
+        )
+        if not quality_vtu.is_file():
+            raise FileNotFoundError(f"SU2 did not create its quality output: {quality_vtu}")
+
+        print("ParaView is open; close it to remove SU2's temporary output files.")
+        paraview_process = subprocess.Popen([paraview_path, str(quality_vtu)])
+        paraview_process.wait()
+
+
+
+
 
 
     # import meshio
