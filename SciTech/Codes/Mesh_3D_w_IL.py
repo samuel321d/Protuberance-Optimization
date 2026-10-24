@@ -299,7 +299,7 @@ def meshgen_3D(config = {}):
 
     # Combine Sizings
     background = msh.field.add("Min")
-    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, BOIF1, BOIF2, BOIS1, BOIS2])
+    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, BOIF1, BOIF2, BOIS1, BOIS2, WALL_SIZE])
     msh.field.setAsBackgroundMesh(background)
 
     # Generate mesh
