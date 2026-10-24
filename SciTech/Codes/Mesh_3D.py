@@ -12,7 +12,6 @@ This file contains the function to generate the 3D mesh of the rocket.
 # ===========================================================
 # 3rd party imports
 from pathlib import Path
-from math import radians
 import gmsh
 
 # ===========================================================
@@ -36,9 +35,15 @@ def meshgen_3D(config = {}):
         "layer ratio"        : 1.2,
         "layer thickness"    : 9.75e-7*1000,
         "number of layers"   : 40,
-        "BOI1"               : 1000,
-        "BOI2"               : 300,
-        "BOI3"               : 100,
+        "BOIC1"              : 1000,
+        "BOIC2"              : 500,
+        "BOIC3"              : 400,
+        "BOIC4"              : 200,
+        "BOIC5"              : 100,
+        "BOIF1"              : 50,
+        "BOIF2"              : 20,
+        "BOIS1"              : 300, 
+        "BOIS2"              : 100,
         "global size"        : 2000,
         "L"                  : 3200
     }
@@ -93,14 +98,14 @@ def meshgen_3D(config = {}):
     r = config["layer ratio"]
     h0 = config["layer thickness"]
 
-    # Total thickness can be specified instead of layer thickness. If both are specified, total thickness takes precedence.
-    total_thickness = config.get("total thickness")
-    if total_thickness is not None:
-        if total_thickness <= 0:
-            raise ValueError("'total thickness' must be greater than 0.")
-        h0 = total_thickness / sum(r**i for i in range(N))
-    elif h0 <= 0:
-        raise ValueError("'layer thickness' must be greater than 0.")
+    # # Total thickness can be specified instead of layer thickness. If both are specified, total thickness takes precedence.
+    # total_thickness = config.get("total thickness")
+    # if total_thickness is not None:
+    #     if total_thickness <= 0:
+    #         raise ValueError("'total thickness' must be greater than 0.")
+    #     h0 = total_thickness / sum(r**i for i in range(N))
+    # elif h0 <= 0:
+    #     raise ValueError("'layer thickness' must be greater than 0.")
 
     # Calculate layer heights
     heights = []
@@ -154,54 +159,8 @@ def meshgen_3D(config = {}):
     # ===========================================================
     # Meshing
     # ===========================================================
-    gmsh.option.setNumber("Mesh.Algorithm3D", 4)
+    # gmsh.option.setNumber("Mesh.Algorithm3D", 4)
     gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
-
-    # BOIs
-    BOI1 = msh.field.add("Box")
-    msh.field.setNumber(BOI1, "XMin", -5.5*L)
-    msh.field.setNumber(BOI1, "XMax", 8.5*L)
-    msh.field.setNumber(BOI1, "YMin", -7*L)
-    msh.field.setNumber(BOI1, "YMax", 7*L)
-    msh.field.setNumber(BOI1, "VIn", config["BOI1"])
-    msh.field.setNumber(BOI1, "Thickness", config["BOI1"])
-    
-    BOI2 = msh.field.add("Box")
-    msh.field.setNumber(BOI2, "XMin", -3.5*L)
-    msh.field.setNumber(BOI2, "XMax", 6.5*L)
-    msh.field.setNumber(BOI2, "YMin", -5*L)
-    msh.field.setNumber(BOI2, "YMax", 5*L)
-    msh.field.setNumber(BOI2, "VIn", config["BOI2"])
-    msh.field.setNumber(BOI2, "Thickness", config["BOI2"])
-    
-    BOI3 = msh.field.add("Box")
-    msh.field.setNumber(BOI3, "XMin", -1.5*L)
-    msh.field.setNumber(BOI3, "XMax", 4.5*L)
-    msh.field.setNumber(BOI3, "YMin", -2*L)
-    msh.field.setNumber(BOI3, "YMax", 2*L)
-    msh.field.setNumber(BOI3, "VIn", config["BOI3"])
-    msh.field.setNumber(BOI3, "Thickness", config["BOI3"])
-    
-    # BOI4 = msh.field.add("Box")
-    # msh.field.setNumber(BOI4, "XMin", -0.5*L)
-    # msh.field.setNumber(BOI4, "XMax", 2.0*L)
-    # msh.field.setNumber(BOI4, "YMin", -0.3*L)
-    # msh.field.setNumber(BOI4, "YMax", 0.6*L)
-    # msh.field.setNumber(BOI4, "VIn", config["BOI4"])
-    # msh.field.setNumber(BOI4, "Thickness", config["BOI4"])
-    
-    # BOI5 = msh.field.add("Box")
-    # msh.field.setNumber(BOI5, "XMin", -0.1*L)
-    # msh.field.setNumber(BOI5, "XMax", 1.2*L)
-    # msh.field.setNumber(BOI5, "YMin", -0.25*L)
-    # msh.field.setNumber(BOI5, "YMax", 0.2*L)
-    # msh.field.setNumber(BOI5, "VIn", config["BOI5"])
-    # msh.field.setNumber(BOI5, "Thickness", config["BOI5"])
-
-    # Combine Sizings
-    min = msh.field.add("Min")
-    msh.field.setNumbers(min, "FieldsList", [BOI1, BOI2, BOI3])
-    #msh.field.setAsBackgroundMesh(min)
 
     # Generate mesh
     msh.generate(3)
@@ -251,19 +210,19 @@ if __name__ == "__main__":
     import shutil
     import subprocess
 
-    # Convert to VTU
-    mesh = meshio.read(Path(__file__).parent / config["filename"])
-    mesh.cell_sets.clear()
-    vtu_path = Path(Path(__file__).parent / "Mesh.vtu").resolve()
-    meshio.write(vtu_path, mesh)
+    # # Convert to VTU
+    # mesh = meshio.read(Path(__file__).parent / config["filename"])
+    # mesh.cell_sets.clear()
+    # vtu_path = Path(Path(__file__).parent / "Mesh.vtu").resolve()
+    # meshio.write(vtu_path, mesh)
 
-    # Open in Paraview
-    paraview = shutil.which("paraview") or shutil.which("paraview.exe")
-    if paraview is None:
-        paraview = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
-        if not Path(paraview).is_file():
-            raise FileNotFoundError(
-                "ParaView was not found. Add paraview.exe to PATH or update its path in BL.py."
-            )
+    # # Open in Paraview
+    # paraview = shutil.which("paraview") or shutil.which("paraview.exe")
+    # if paraview is None:
+    #     paraview = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
+    #     if not Path(paraview).is_file():
+    #         raise FileNotFoundError(
+    #             "ParaView was not found. Add paraview.exe to PATH or update its path in BL.py."
+    #         )
 
-    subprocess.Popen([paraview, str(vtu_path)])
+    # subprocess.Popen([paraview, str(vtu_path)])

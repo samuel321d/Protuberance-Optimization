@@ -23,8 +23,8 @@ def g(x):
 L = 3.6
 
 # Mapping coordinates
-u = np.linspace(0, 1, 50)
-v = np.linspace(0, 1, 50)
+u = np.linspace(0, 1, 100)
+v = np.linspace(0, 1, 100)
 
 U, V = np.meshgrid(u, v)
 

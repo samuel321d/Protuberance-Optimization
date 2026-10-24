@@ -12,7 +12,6 @@ This file contains the function to generate the 3D mesh of the rocket.
 # ===========================================================
 # 3rd party imports
 from pathlib import Path
-from math import radians
 import shutil
 import subprocess
 import tempfile
@@ -39,9 +38,15 @@ def meshgen_3D(config = {}):
         "layer ratio"        : 1.2,
         "layer thickness"    : 9.75e-7*1000,
         "number of layers"   : 40,
-        "BOI1"               : 1000,
-        "BOI2"               : 300,
-        "BOI3"               : 100,
+        "BOIC1"              : 1000,
+        "BOIC2"              : 500,
+        "BOIC3"              : 400,
+        "BOIC4"              : 200,
+        "BOIC5"              : 100,
+        "BOIF1"              : 50,
+        "BOIF2"              : 20,
+        "BOIS1"              : 300, 
+        "BOIS2"              : 100,
         "global size"        : 2000,
         "L"                  : 3200
     }
@@ -91,17 +96,64 @@ def meshgen_3D(config = {}):
 
     occm.synchronize()
 
+    # Extract inflation layer parameters
+    N = config["number of layers"]
+    r = config["layer ratio"]
+    h0 = config["layer thickness"]
+
+    # Total thickness can be specified instead of layer thickness. If both are specified, total thickness takes precedence.
+    total_thickness = config.get("total thickness")
+    if total_thickness is not None:
+        if total_thickness <= 0:
+            raise ValueError("'total thickness' must be greater than 0.")
+        h0 = total_thickness / sum(r**i for i in range(N))
+    elif h0 <= 0:
+        raise ValueError("'layer thickness' must be greater than 0.")
+
+    # Calculate layer heights
+    heights = []
+    for i in range(N):
+        layer_height = h0 * r**i
+        heights.append((heights[-1] if heights else 0) + layer_height)
+
+    # Grow inflation layers
+    rocket_volumes = [(dim, tag) for dim, tag in rocket if dim == 3]
+    rocket_boundary = gmsh.model.getBoundary(rocket_volumes, oriented = True, recursive = False)
+    rocket_surfaces = [(dim, abs(tag)) for dim, tag in rocket_boundary if dim == 2]
+    inward_surfaces = [(dim, -tag) for dim, tag in rocket_boundary if dim == 2 and tag < 0]
+
+    farfield_points = gmsh.model.getBoundary([(2, tag) for tag in farfield_surfaces], combined = True, oriented = False, recursive = True)
+    farfield_size = max(config["global size"] * 10, 1000)
+    msh.setSize([(dim, tag) for dim, tag in farfield_points if dim == 0], farfield_size)
+    msh.generate(2)
+    if inward_surfaces:
+        msh.reverse(inward_surfaces)
+
+    extbl = geom.extrudeBoundaryLayer(rocket_surfaces, [1] * N, heights, True)
+
+    geom.synchronize()
+
+    boundary_layer_volumes = [tag for dim, tag in extbl if dim == 3]
+
     # Rocket surfaces
     rocket_boundary = gmsh.model.getBoundary(rocket, combined = False,oriented = False, recursive = False)
     rocket_surfaces = [tag for dim, tag in rocket_boundary if dim == 2]
 
     # Remove rocket
-    occm.remove(rocket, recursive = False)
+    occm.remove(rocket, recursive = True)
 
     occm.synchronize()
 
+    # BL top faces
+    top = []
+    for i in range(1, len(extbl)):
+        if extbl[i][0] == 3:
+            top.append(extbl[i-1])
+
     # Surface loops
-    s_in = geom.addSurfaceLoop(rocket_surfaces)
+    # s_in = geom.addSurfaceLoop(rocket_surfaces)
+    b_in = [s[1] for s in top]
+    s_in = geom.addSurfaceLoop(b_in)
     s_out = geom.addSurfaceLoop(farfield_surfaces)
 
     # Volume
@@ -112,7 +164,7 @@ def meshgen_3D(config = {}):
     # Export the boundary markers required by SU2's mesh reader.
     gmsh.model.addPhysicalGroup(2, farfield_surfaces, name = "FARFIELD")
     gmsh.model.addPhysicalGroup(2, rocket_surfaces, name = "WALL")
-    gmsh.model.addPhysicalGroup(3, [v], name = "FLUID")
+    gmsh.model.addPhysicalGroup(3, [v, *boundary_layer_volumes], name = "FLUID")
 
     # ===========================================================
     # Meshing
@@ -124,109 +176,104 @@ def meshgen_3D(config = {}):
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
 
     # BOIs
-    BOI1 = msh.field.add("Box")
-    msh.field.setNumber(BOI1, "XMin", -5.5*L)
-    msh.field.setNumber(BOI1, "XMax", 8.5*L)
-    msh.field.setNumber(BOI1, "YMin", -7*L)
-    msh.field.setNumber(BOI1, "YMax", 7*L)
-    msh.field.setNumber(BOI1, "ZMin", -7*L)
-    msh.field.setNumber(BOI1, "ZMax", 7*L)
-    msh.field.setNumber(BOI1, "VIn", config["BOI1"])
-    msh.field.setNumber(BOI1, "VOut", config["global size"])
-    msh.field.setNumber(BOI1, "Thickness", config["BOI1"])
+    BOIC1 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIC1, "VIn", config["BOIC1"])
+    msh.field.setNumber(BOIC1, "Radius", 7*L)
+    msh.field.setNumber(BOIC1, "VOut", config["global size"])
+    msh.field.setNumber(BOIC1, "XAxis", 7*L)
+    msh.field.setNumber(BOIC1, "YAxis", 0)
+    msh.field.setNumber(BOIC1, "ZAxis", 0)
+    msh.field.setNumber(BOIC1, "XCenter", 1.5*L)
+    msh.field.setNumber(BOIC1, "YCenter", 0)
+    msh.field.setNumber(BOIC1, "ZCenter", 0)
 
-    BOI2 = msh.field.add("Box")
-    msh.field.setNumber(BOI2, "XMin", -3.5*L)
-    msh.field.setNumber(BOI2, "XMax", 6.5*L)
-    msh.field.setNumber(BOI2, "YMin", -5*L)
-    msh.field.setNumber(BOI2, "YMax", 5*L)
-    msh.field.setNumber(BOI2, "ZMin", -5*L)
-    msh.field.setNumber(BOI2, "ZMax", 5*L)
-    msh.field.setNumber(BOI2, "VIn", config["BOI2"])
-    msh.field.setNumber(BOI2, "VOut", config["global size"])
-    msh.field.setNumber(BOI2, "Thickness", config["BOI2"])
+    BOIC2 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIC2, "VIn", config["BOIC2"])
+    msh.field.setNumber(BOIC2, "Radius", 5*L)
+    msh.field.setNumber(BOIC2, "VOut", config["global size"])
+    msh.field.setNumber(BOIC2, "XAxis", 5*L)
+    msh.field.setNumber(BOIC2, "YAxis", 0)
+    msh.field.setNumber(BOIC2, "ZAxis", 0)
+    msh.field.setNumber(BOIC2, "XCenter", 1.5*L)
+    msh.field.setNumber(BOIC2, "YCenter", 0)
+    msh.field.setNumber(BOIC2, "ZCenter", 0)
 
-    BOI3 = msh.field.add("Box")
-    msh.field.setNumber(BOI3, "XMin", -1.5*L)
-    msh.field.setNumber(BOI3, "XMax", 4.5*L)
-    msh.field.setNumber(BOI3, "YMin", -3*L)
-    msh.field.setNumber(BOI3, "YMax", 3*L)
-    msh.field.setNumber(BOI3, "ZMin", -3*L)
-    msh.field.setNumber(BOI3, "ZMax", 3*L)
-    msh.field.setNumber(BOI3, "VIn", config["BOI3"])
-    msh.field.setNumber(BOI3, "VOut", config["global size"])
-    msh.field.setNumber(BOI3, "Thickness", config["BOI3"])
+    BOIC3 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIC3, "VIn", config["BOIC3"])
+    msh.field.setNumber(BOIC3, "Radius", 3*L)
+    msh.field.setNumber(BOIC3, "VOut", config["global size"])
+    msh.field.setNumber(BOIC3, "XAxis", 4*L)
+    msh.field.setNumber(BOIC3, "YAxis", 0)
+    msh.field.setNumber(BOIC3, "ZAxis", 0)
+    msh.field.setNumber(BOIC3, "XCenter", 1.5*L)
+    msh.field.setNumber(BOIC3, "YCenter", 0)
+    msh.field.setNumber(BOIC3, "ZCenter", 0)
 
-    BOI4 = msh.field.add("Box")
-    msh.field.setNumber(BOI4, "XMin", -1.1*L)
-    msh.field.setNumber(BOI4, "XMax", 0.1*L)
-    msh.field.setNumber(BOI4, "YMin", -0.5*L)
-    msh.field.setNumber(BOI4, "YMax", 0.5*L)
-    msh.field.setNumber(BOI4, "ZMin", -0.5*L)
-    msh.field.setNumber(BOI4, "ZMax", 0.5*L)
-    msh.field.setNumber(BOI4, "VIn", config["BOI4"])
-    msh.field.setNumber(BOI4, "Thickness", config["BOI4"])
-    msh.field.setNumber(BOI4, "VOut", config["global size"])
+    BOIC4 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIC4, "VIn", config["BOIC4"])
+    msh.field.setNumber(BOIC4, "Radius", 1*L)
+    msh.field.setNumber(BOIC4, "VOut", config["global size"])
+    msh.field.setNumber(BOIC4, "XAxis", 2.5*L)
+    msh.field.setNumber(BOIC4, "YAxis", 0)
+    msh.field.setNumber(BOIC4, "ZAxis", 0)
+    msh.field.setNumber(BOIC4, "XCenter", L)
+    msh.field.setNumber(BOIC4, "YCenter", 0)
+    msh.field.setNumber(BOIC4, "ZCenter", 0)
 
-    # BOI1 = msh.field.add("Frustum")
-    # msh.field.setNumber(BOI1, "InnerR1", 0)
-    # msh.field.setNumber(BOI1, "InnerR2", 0)
-    # msh.field.setNumber(BOI1, "InnerV1", config["BOI1"])
-    # msh.field.setNumber(BOI1, "InnerV2", config["BOI1"])
-    # msh.field.setNumber(BOI1, "OuterR1", 7*L)
-    # msh.field.setNumber(BOI1, "OuterR2", 7*L)
-    # msh.field.setNumber(BOI1, "X1", 8.5*L)
-    # msh.field.setNumber(BOI1, "Y1", 0)
-    # msh.field.setNumber(BOI1, "Z1", 0)
-    # msh.field.setNumber(BOI1, "X2", -5.5*L)
-    # msh.field.setNumber(BOI1, "Y2", 0)
-    # msh.field.setNumber(BOI1, "Z2", 0)
+    BOIC5 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIC5, "VIn", config["BOIC5"])
+    msh.field.setNumber(BOIC5, "Radius", 0.1*L)
+    msh.field.setNumber(BOIC5, "VOut", config["global size"])
+    msh.field.setNumber(BOIC5, "XAxis", 0.6*L)
+    msh.field.setNumber(BOIC5, "YAxis", 0)
+    msh.field.setNumber(BOIC5, "ZAxis", 0)
+    msh.field.setNumber(BOIC5, "XCenter", -0.5*L)
+    msh.field.setNumber(BOIC5, "YCenter", 0)
+    msh.field.setNumber(BOIC5, "ZCenter", 0)
 
-    # BOI2 = msh.field.add("Frustum")
-    # msh.field.setNumber(BOI2, "InnerR1", 0)
-    # msh.field.setNumber(BOI2, "InnerR2", 0)
-    # msh.field.setNumber(BOI2, "InnerV1", config["BOI2"])
-    # msh.field.setNumber(BOI2, "InnerV2", config["BOI2"])
-    # msh.field.setNumber(BOI2, "OuterR1", 5*L)
-    # msh.field.setNumber(BOI2, "OuterR2", 5*L)
-    # msh.field.setNumber(BOI2, "X1", 6.5*L)
-    # msh.field.setNumber(BOI2, "Y1", 0)
-    # msh.field.setNumber(BOI2, "Z1", 0)
-    # msh.field.setNumber(BOI2, "X2", -3.5*L)
-    # msh.field.setNumber(BOI2, "Y2", 0)
-    # msh.field.setNumber(BOI2, "Z2", 0)
+    BOIF1 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIF1, "VIn", config["BOIF1"])
+    msh.field.setNumber(BOIF1, "Radius", 0.4*L)
+    msh.field.setNumber(BOIF1, "VOut", config["global size"])
+    msh.field.setNumber(BOIF1, "XAxis", 1.3*L)
+    msh.field.setNumber(BOIF1, "YAxis", 0)
+    msh.field.setNumber(BOIF1, "ZAxis", 0)
+    msh.field.setNumber(BOIF1, "XCenter", L)
+    msh.field.setNumber(BOIF1, "YCenter", 0)
+    msh.field.setNumber(BOIF1, "ZCenter", 0)
 
-    # BOI3 = msh.field.add("Frustum")
-    # msh.field.setNumber(BOI3, "InnerR1", 0)
-    # msh.field.setNumber(BOI3, "InnerR2", 0)
-    # msh.field.setNumber(BOI3, "InnerV1", config["BOI3"])
-    # msh.field.setNumber(BOI3, "InnerV2", config["BOI3"])
-    # msh.field.setNumber(BOI3, "OuterR1", 3*L)
-    # msh.field.setNumber(BOI3, "OuterR2", 3*L)
-    # msh.field.setNumber(BOI3, "X1", 4.5*L)
-    # msh.field.setNumber(BOI3, "Y1", 0)
-    # msh.field.setNumber(BOI3, "Z1", 0)
-    # msh.field.setNumber(BOI3, "X2", -1.5*L)
-    # msh.field.setNumber(BOI3, "Y2", 0)
-    # msh.field.setNumber(BOI3, "Z2", 0)
+    BOIF2 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIF2, "VIn", config["BOIF2"])
+    msh.field.setNumber(BOIF2, "Radius", 0.2*L)
+    msh.field.setNumber(BOIF2, "VOut", config["global size"])
+    msh.field.setNumber(BOIF2, "XAxis", 0.3*L)
+    msh.field.setNumber(BOIF2, "YAxis", 0)
+    msh.field.setNumber(BOIF2, "ZAxis", 0)
+    msh.field.setNumber(BOIF2, "XCenter", 0.1*L)
+    msh.field.setNumber(BOIF2, "YCenter", 0)
+    msh.field.setNumber(BOIF2, "ZCenter", 0)
 
-    # BOI4 = msh.field.add("Frustum")
-    # msh.field.setNumber(BOI4, "InnerR1", 0)
-    # msh.field.setNumber(BOI4, "InnerR2", 0)
-    # msh.field.setNumber(BOI4, "InnerV1", config["BOI4"])
-    # msh.field.setNumber(BOI4, "InnerV2", config["BOI4"])
-    # msh.field.setNumber(BOI4, "OuterR1", 0.5*L)
-    # msh.field.setNumber(BOI4, "OuterR2", 0.5*L)
-    # msh.field.setNumber(BOI4, "X1", 0.1*L)
-    # msh.field.setNumber(BOI4, "Y1", 0)
-    # msh.field.setNumber(BOI4, "Z1", 0)
-    # msh.field.setNumber(BOI4, "X2", -1.1*L)
-    # msh.field.setNumber(BOI4, "Y2", 0)
-    # msh.field.setNumber(BOI4, "Z2", 0)
+    BOIS1 = msh.field.add("Ball")
+    msh.field.setNumber(BOIS1, "Radius", 0.25*L)
+    msh.field.setNumber(BOIS1, "Thickness", config["BOIS1"])
+    msh.field.setNumber(BOIS1, "VIn", config["BOIS1"])
+    msh.field.setNumber(BOIS1, "VOut", config["global size"])
+    msh.field.setNumber(BOIS1, "XCenter", -L)
+    msh.field.setNumber(BOIS1, "YCenter", 0)
+    msh.field.setNumber(BOIS1, "ZCenter", 0)
+
+    BOIS2 = msh.field.add("Ball")
+    msh.field.setNumber(BOIS2, "Radius", 0.1*L)
+    msh.field.setNumber(BOIS2, "Thickness", config["BOIS2"])
+    msh.field.setNumber(BOIS2, "VIn", config["BOIS2"])
+    msh.field.setNumber(BOIS2, "VOut", config["global size"])
+    msh.field.setNumber(BOIS2, "XCenter", -L)
+    msh.field.setNumber(BOIS2, "YCenter", 0)
+    msh.field.setNumber(BOIS2, "ZCenter", 0)
 
     # Combine Sizings
     background = msh.field.add("Min")
-    msh.field.setNumbers(background, "FieldsList", [BOI1, BOI2, BOI3, BOI4])
+    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, BOIF1, BOIF2, BOIS1, BOIS2])
     msh.field.setAsBackgroundMesh(background)
 
     # Generate mesh
@@ -243,8 +290,7 @@ def meshgen_3D(config = {}):
     # Visualization options
     gmsh.option.setNumber("Geometry.Curves", 1)
     gmsh.option.setNumber("Geometry.Surfaces", 1)
-    gmsh.option.setNumber("Mesh.SurfaceFaces", 1)
-    gmsh.option.setNumber("Mesh.Points", 1)
+    gmsh.option.setNumber("Mesh.VolumeFaces", 1)
 
     # Read save directory
     path = Path(__file__).parent / config["filename"]
@@ -262,21 +308,26 @@ if __name__ == "__main__":
         "filename"              : "Mesh.su2",
         "layer thickness"       : 1.12e-3,
         "layer ratio"           : 1.21,
-        "total thickness"       : 10,
-        "number of layers"      : 45,
-        "BOI1"                  : 2000,
-        "BOI2"                  : 1000,
-        "BOI3"                  : 5000,
-        "BOI4"                  : 100,
+        "total thickness"       : 5,
+        "number of layers"      : 55,
+        "BOIC1"                 : 2000,
+        "BOIC2"                 : 1000,
+        "BOIC3"                 : 500,
+        "BOIC4"                 : 200,
+        "BOIC5"                 : 70,
+        "BOIF1"                 : 50,
+        "BOIF2"                 : 30,
+        "BOIS1"                 : 50,
+        "BOIS2"                 : 20,
         "global size"           : 4000,
         "L"                     : 3240
     }
 
-    meshgen_3D(config = config)
+    #meshgen_3D(config = config)
 
     # Calculate metrics with SU2_CFD
 
-    # Paths
+    #Paths
     mesh_path = Path(__file__).parent / config["filename"]
     su2_cfd_path = shutil.which("SU2_CFD")
     paraview_path = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
@@ -306,7 +357,7 @@ if __name__ == "__main__":
             "MGLEVEL = 0\n"
             "CONV_FILENAME = quality_history\n"
             "VOLUME_FILENAME = quality\n"
-            "VOLUME_OUTPUT = ( COORDINATES, MESH_QUALITY )\n"
+            "VOLUME_OUTPUT = ( COORDINATES, MESH_QUALITY)\n"
             "OUTPUT_FILES = ( PARAVIEW )\n"
         )
         cfg_path.write_text(config_text, encoding = "ascii")
