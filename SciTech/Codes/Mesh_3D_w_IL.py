@@ -125,7 +125,26 @@ def meshgen_3D(config = {}):
     farfield_points = gmsh.model.getBoundary([(2, tag) for tag in farfield_surfaces], combined = True, oriented = False, recursive = True)
     farfield_size = max(config["global size"] * 10, 1000)
     msh.setSize([(dim, tag) for dim, tag in farfield_points if dim == 0], farfield_size)
+
+    gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
+    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
+
+    # Tamaño constante sobre todas las superficies del cohete (en unidades del STEP)
+    WALL = msh.field.add("MathEval")
+    msh.field.setString(WALL, "F", "10")
+
+    WALL_SIZE = msh.field.add("Restrict")
+    msh.field.setNumber(WALL_SIZE, "InField", WALL)
+    msh.field.setNumbers(WALL_SIZE, "SurfacesList", [tag for dim, tag in rocket_surfaces])
+
+    msh.field.setAsBackgroundMesh(WALL_SIZE)
+
     msh.generate(2)
+
+    gmsh.fltk.run()
+
     if inward_surfaces:
         msh.reverse(inward_surfaces)
 
@@ -170,10 +189,6 @@ def meshgen_3D(config = {}):
     # Meshing
     # ===========================================================
     #gmsh.option.setNumber("Mesh.Algorithm3D", 4)
-    gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
-    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
-    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
 
     # BOIs
     BOIC1 = msh.field.add("Cylinder")
@@ -253,6 +268,17 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIF2, "YCenter", 0)
     msh.field.setNumber(BOIF2, "ZCenter", 0)
 
+    # BOIF3 = msh.field.add("Box")
+    # msh.field.setNumber(BOIF3, "VIn", config["BOIF3"])
+    # msh.field.setNumber(BOIF3, "Thickness", config["BOIF3"])
+    # msh.field.setNumber(BOIF3, "VOut", config["global size"])
+    # msh.field.setNumber(BOIF3, "XMin", 0)
+    # msh.field.setNumber(BOIF3, "XMax", -60)
+    # msh.field.setNumber(BOIF3, "YMin", 0)
+    # msh.field.setNumber(BOIF3, "YMax", 270)
+    # msh.field.setNumber(BOIF3, "ZMin", 0)
+    # msh.field.setNumber(BOIF3, "ZMax", 0)
+
     BOIS1 = msh.field.add("Ball")
     msh.field.setNumber(BOIS1, "Radius", 0.25*L)
     msh.field.setNumber(BOIS1, "Thickness", config["BOIS1"])
@@ -323,7 +349,7 @@ if __name__ == "__main__":
         "L"                     : 3240
     }
 
-    #meshgen_3D(config = config)
+    meshgen_3D(config = config)
 
     # Calculate metrics with SU2_CFD
 
