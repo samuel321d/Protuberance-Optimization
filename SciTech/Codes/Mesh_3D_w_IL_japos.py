@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import tempfile
 import gmsh
-
+import numpy as np
 # ===========================================================
 # Function
 # ===========================================================
@@ -91,9 +91,13 @@ def meshgen_3D(config = {}):
     occm.synchronize()
 
     # Import rocket geometry
-    rocket_path = Path(__file__).parent / "Rocket.step"
+    rocket_path = Path(__file__).parent / "Cohetejaponeses.step"
     rocket = occm.importShapes(str(rocket_path), highestDimOnly=True)
 
+    occm.synchronize()
+    occm.translate(rocket, -L, 0, 0)
+    occm.synchronize()
+    occm.rotate(rocket, 0, 0, 0, 1, 0, 0, -np.pi/4)
     occm.synchronize()
 
     # Extract inflation layer parameters
@@ -297,9 +301,47 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIS2, "YCenter", 0)
     msh.field.setNumber(BOIS2, "ZCenter", 0)
 
+    BOIS3 = msh.field.add("Ball")
+    msh.field.setNumber(BOIS3, "Radius", 0.08*L)
+    msh.field.setNumber(BOIS3, "Thickness", config["BOIS3"])
+    msh.field.setNumber(BOIS3, "VIn", config["BOIS3"])
+    msh.field.setNumber(BOIS3, "VOut", config["global size"])
+    msh.field.setNumber(BOIS3, "XCenter", -L)
+    msh.field.setNumber(BOIS3, "YCenter", 0)
+    msh.field.setNumber(BOIS3, "ZCenter", 0)
+    
+    BOIP1 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIP1, "VIn", config["BOIP1"])
+    msh.field.setNumber(BOIP1, "Radius", 0.025*L)
+    msh.field.setNumber(BOIP1, "VOut", config["global size"])
+    msh.field.setNumber(BOIP1, "XAxis", 0.1*L)
+    msh.field.setNumber(BOIP1, "YAxis", 0)
+    msh.field.setNumber(BOIP1, "ZAxis", 0)
+    msh.field.setNumber(BOIP1, "XCenter", (1-config["prot_loc"])*L - L)
+    msh.field.setNumber(BOIP1, "YCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
+    msh.field.setNumber(BOIP1, "ZCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
+
+    BOIP2 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIP2, "VIn", config["BOIP2"])
+    msh.field.setNumber(BOIP2, "Radius", 0.05*L)
+    msh.field.setNumber(BOIP2, "VOut", config["global size"])
+    msh.field.setNumber(BOIP2, "XAxis", 0.4*L)
+    msh.field.setNumber(BOIP2, "YAxis", 0)
+    msh.field.setNumber(BOIP2, "ZAxis", 0)
+    msh.field.setNumber(BOIP2, "XCenter", 0.6*L - L)
+    msh.field.setNumber(BOIP2, "YCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
+    msh.field.setNumber(BOIP2, "ZCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
+
+
+
     # Combine Sizings
     background = msh.field.add("Min")
-    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, BOIF1, BOIF2, BOIS1, BOIS2, WALL_SIZE])
+    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, 
+                                                    BOIC3, BOIC4, 
+                                                    BOIC5, BOIF1, 
+                                                    BOIF2, BOIS1, 
+                                                    BOIS2, BOIS3,
+                                                    BOIP1, BOIP2])
     msh.field.setAsBackgroundMesh(background)
 
     # Generate mesh
@@ -332,21 +374,26 @@ def meshgen_3D(config = {}):
 if __name__ == "__main__":
     config = {
         "filename"              : "Mesh.su2",
-        "layer thickness"       : 1.12e-3,
-        "layer ratio"           : 1.21,
-        "total thickness"       : 5,
-        "number of layers"      : 55,
-        "BOIC1"                 : 2000,
-        "BOIC2"                 : 1000,
-        "BOIC3"                 : 500,
-        "BOIC4"                 : 200,
-        "BOIC5"                 : 70,
-        "BOIF1"                 : 50,
-        "BOIF2"                 : 30,
-        "BOIS1"                 : 50,
-        "BOIS2"                 : 20,
-        "global size"           : 4000,
-        "L"                     : 3240
+        "layer thickness"       : 1e-3,
+        "layer ratio"           : 1.19,
+        "total thickness"       : 0.8,
+        "number of layers"      : 40,
+        "BOIC1"                 : 200,
+        "BOIC2"                 : 100,
+        "BOIC3"                 : 50,
+        "BOIC4"                 : 20,
+        "BOIC5"                 : 7,
+        "BOIF1"                 : 5,
+        "BOIF2"                 : 3,
+        "BOIS1"                 : 5,
+        "BOIS2"                 : 2,
+        "BOIS3"                 : 1,   
+        "global size"           : 400,
+        "L"                     : 368,
+        "prot_loc"              : 0.75,
+        "BOIP1"                 : 1,
+        "BOIP2"                 : 2,
+        "R_radius"              : 41.5*0.5
     }
 
     meshgen_3D(config = config)
