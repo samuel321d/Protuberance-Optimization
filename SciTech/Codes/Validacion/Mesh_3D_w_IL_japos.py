@@ -138,6 +138,33 @@ def meshgen_3D(config = {}):
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
 
+    # Define the cone field before the first mesh generation.
+    R_Cone1 = 5*L * math.tan(math.radians(45))
+    LEC = occm.addCone(-L, 0, 0, 5*L, 0, 0, 0, R_Cone1)
+    occm.synchronize()
+
+    LEC_faces = gmsh.model.getBoundary([(3, LEC)], oriented = False)
+    LEC_surfaces = [
+        tag for dim, tag in LEC_faces
+        if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"
+    ]
+    if not LEC_surfaces:
+        raise RuntimeError("Could not find the cone surface for mesh refinement.")
+
+    occm.remove([(3, LEC)], recursive = False)
+    occm.synchronize()
+
+    DISTANCE = msh.field.add("Distance")
+    msh.field.setNumbers(DISTANCE, "SurfacesList", LEC_surfaces)
+    msh.field.setNumber(DISTANCE, "Sampling", 100)
+
+    CONE = msh.field.add("Threshold")
+    msh.field.setNumber(CONE, "InField", DISTANCE)
+    msh.field.setNumber(CONE, "SizeMin", config["cone"])
+    msh.field.setNumber(CONE, "SizeMax", config["global size"])
+    msh.field.setNumber(CONE, "DistMin", 0.1*L)
+    msh.field.setNumber(CONE, "DistMax", 0.2*L)
+
     # Spherical BOIs
     BOIS1 = msh.field.add("Ball")
     msh.field.setNumber(BOIS1, "Radius", 0.25*L)
@@ -167,7 +194,7 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIS3, "ZCenter", 0)
 
     SPHERES = msh.field.add("Min")
-    msh.field.setNumbers(SPHERES, "FieldsList", [BOIS1, BOIS2, BOIS3])
+    msh.field.setNumbers(SPHERES, "FieldsList", [BOIS1, BOIS2, BOIS3, CONE])
     msh.field.setAsBackgroundMesh(SPHERES)
 
     # Generate mesh
@@ -208,30 +235,6 @@ def meshgen_3D(config = {}):
     gmsh.model.addPhysicalGroup(3, [v, *boundary_layer_volumes], name = "FLUID")
     gmsh.model.addPhysicalGroup(2, farfield_surfaces, name = "FARFIELD")
     gmsh.model.addPhysicalGroup(2, rocket_surfaces, name = "WALL")
-
-    # Shock cone refinement geometries
-    # Extends
-    R_Cone1 = 5*L * math.tan(math.radians(45))
-    # R_Cone2 = L * math.tan(math.radians(40))
-
-    # Cones
-    LEC = occm.addCone(-L, 0, 0, 5*L, 0, 0, 0, R_Cone1)
-    # TEC = occm.addCone(L, 0, 0, L, 0, 0, 0, R_Cone2)
-
-    occm.synchronize()
-
-    # Faces
-    LEC_faces = gmsh.model.getBoundary([(3, LEC)], oriented = False)
-    # TEC_faces = gmsh.model.getBoundary([(3, TEC)], oriented = False)
-
-    # Surfaces
-    LEC_surfaces = [tag for dim, tag in LEC_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
-    # TEC_surfaces = [tag for dim, tag in TEC_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
-
-    # Remove volumes
-    occm.remove([(3, LEC)], recursive=False)
-
-    occm.synchronize()
 
     # Cylindrical BOIs
     BOIC1 = msh.field.add("Cylinder")
@@ -344,18 +347,6 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIP2, "YCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
     msh.field.setNumber(BOIP2, "ZCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
 
-    # Shock Refinement treshold
-    DISTANCE = gmsh.model.mesh.field.add("Distance")
-    gmsh.model.mesh.field.setNumbers(DISTANCE, "SurfacesList", LEC_surfaces)
-    gmsh.model.mesh.field.setNumber(DISTANCE, "Sampling", 100)
-
-    CONE = gmsh.model.mesh.field.add("Threshold")
-    gmsh.model.mesh.field.setNumber(CONE, "InField", DISTANCE)
-    gmsh.model.mesh.field.setNumber(CONE, "SizeMin", config["cone"])
-    gmsh.model.mesh.field.setNumber(CONE, "SizeMax", config["global size"])
-    gmsh.model.mesh.field.setNumber(CONE, "DistMin", 0.1*L)
-    gmsh.model.mesh.field.setNumber(CONE, "DistMax", 0.2*L)
-
     # Combine Sizings
     background = msh.field.add("Min")
     msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, 
@@ -397,15 +388,15 @@ if __name__ == "__main__":
         "total thickness"       : 0.000625, #0.88, 0.5
         "number of layers"      : 25,#55, # 40,
         "BOIC1"                 : 0.2,
-        "BOIC2"                 : 0.1,
-        "BOIC3"                 : 0.05,
-        "BOIC4"                 : 0.02,
+        "BOIC2"                 : 0.2, #0.1,
+        "BOIC3"                 : 0.2, #0.05,
+        "BOIC4"                 : 0.2, #0.02,
         "BOIC5"                 : 0.003,
-        "BOIF1"                 : 0.006,
-        "BOIF2"                 : 0.003,
-        "BOIS1"                 : 0.005,
-        "BOIS2"                 : 0.002,
-        "BOIS3"                 : 0.001,
+        "BOIF1"                 : 0.2, #0.006,
+        "BOIF2"                 : 0.2, #0.003,
+        "BOIS1"                 : 0.2, #0.005,
+        "BOIS2"                 : 0.2, #0.002,
+        "BOIS3"                 : 0.2, #0.001,
         "global size"           : 0.4,
         "L"                     : 0.368,
         "prot_loc"              : 0.75,
