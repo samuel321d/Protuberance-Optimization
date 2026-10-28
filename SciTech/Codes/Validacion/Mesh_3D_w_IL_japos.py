@@ -13,10 +13,12 @@ This file contains the function to generate the 3D mesh of the rocket.
 # 3rd party imports
 from pathlib import Path
 import shutil
+import math
 import subprocess
 import tempfile
 import gmsh
 import numpy as np
+
 # ===========================================================
 # Function
 # ===========================================================
@@ -32,9 +34,8 @@ def meshgen_3D(config = {}):
         .format file containing mesh
     """
 
-    # Default configuration
+    # Default configuration (in mm)
     default_config = {
-
         "filename"              : "Mesh.su2",
         "layer thickness"       : 1.12e-3,
         "layer ratio"           : 1.21,
@@ -49,7 +50,7 @@ def meshgen_3D(config = {}):
         "BOIF2"                 : 3,
         "BOIS1"                 : 5,
         "BOIS2"                 : 2,
-        "BOIS3"                 : 1,   
+        "BOIS3"                 : 1,
         "global size"           : 400,
         "L"                     : 368,
         "prot_loc"              : 0.75,
@@ -58,16 +59,13 @@ def meshgen_3D(config = {}):
         "R_radius"              : 41.5*0.5
     }
 
-
     # Read config
     config = {**default_config, **config}
     L = config["L"]
 
-    # ===========================================================
-    # Initialization
-    # ===========================================================
     gmsh.initialize()
     gmsh.option.setNumber("General.Terminal", 1)
+    gmsh.option.setString("Geometry.OCCTargetUnit", "M")
     gmsh.model.add("Rocket")
 
     # Abreviation
@@ -75,9 +73,6 @@ def meshgen_3D(config = {}):
     occm = gmsh.model.occ
     msh = gmsh.model.mesh
 
-    # ===========================================================
-    # Geometry
-    # ===========================================================
     # Far-field
     cylinder_ff = occm.addCylinder(0, 0, 0, 15*L, 0, 0, 12*L)
     sphere_ff = occm.addSphere(0, 0, 0, 12*L)
@@ -103,9 +98,14 @@ def meshgen_3D(config = {}):
     rocket = occm.importShapes(str(rocket_path), highestDimOnly=True)
 
     occm.synchronize()
+
+    # Accomodate geometry
     occm.translate(rocket, -L, 0, 0)
+
     occm.synchronize()
+
     occm.rotate(rocket, 0, 0, 0, 1, 0, 0, -np.pi/4)
+
     occm.synchronize()
 
     # Extract inflation layer parameters
@@ -128,38 +128,50 @@ def meshgen_3D(config = {}):
         layer_height = h0 * r**i
         heights.append((heights[-1] if heights else 0) + layer_height)
 
-    # Grow inflation layers
+    # Grow inflation layers (dim, tag surface)
     rocket_volumes = [(dim, tag) for dim, tag in rocket if dim == 3]
     rocket_boundary = gmsh.model.getBoundary(rocket_volumes, oriented = True, recursive = False)
     rocket_surfaces = [(dim, abs(tag)) for dim, tag in rocket_boundary if dim == 2]
-    inward_surfaces = [(dim, -tag) for dim, tag in rocket_boundary if dim == 2 and tag < 0]
-
-    farfield_points = gmsh.model.getBoundary([(2, tag) for tag in farfield_surfaces], combined = True, oriented = False, recursive = True)
-    farfield_size = max(config["global size"] * 10, 1000)
-    msh.setSize([(dim, tag) for dim, tag in farfield_points if dim == 0], farfield_size)
 
     gmsh.option.setNumber("Mesh.MeshSizeMax", config["global size"])
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
-    """
-    # Tamaño constante sobre todas las superficies del cohete (en unidades del STEP)
-    WALL = msh.field.add("MathEval")
-    msh.field.setString(WALL, "F", "1")
 
-    WALL_SIZE = msh.field.add("Restrict")
-    msh.field.setNumber(WALL_SIZE, "InField", WALL)
-    msh.field.setNumbers(WALL_SIZE, "SurfacesList", [tag for dim, tag in rocket_surfaces])
+    # Spherical BOIs
+    BOIS1 = msh.field.add("Ball")
+    msh.field.setNumber(BOIS1, "Radius", 0.25*L)
+    msh.field.setNumber(BOIS1, "Thickness", config["BOIS1"])
+    msh.field.setNumber(BOIS1, "VIn", config["BOIS1"])
+    msh.field.setNumber(BOIS1, "VOut", config["global size"])
+    msh.field.setNumber(BOIS1, "XCenter", -L)
+    msh.field.setNumber(BOIS1, "YCenter", 0)
+    msh.field.setNumber(BOIS1, "ZCenter", 0)
 
-    msh.field.setAsBackgroundMesh(WALL_SIZE)
+    BOIS2 = msh.field.add("Ball")
+    msh.field.setNumber(BOIS2, "Radius", 0.1*L)
+    msh.field.setNumber(BOIS2, "Thickness", config["BOIS2"])
+    msh.field.setNumber(BOIS2, "VIn", config["BOIS2"])
+    msh.field.setNumber(BOIS2, "VOut", config["global size"])
+    msh.field.setNumber(BOIS2, "XCenter", -L)
+    msh.field.setNumber(BOIS2, "YCenter", 0)
+    msh.field.setNumber(BOIS2, "ZCenter", 0)
 
-    """
+    BOIS3 = msh.field.add("Ball")
+    msh.field.setNumber(BOIS3, "Radius", 0.008*L)
+    msh.field.setNumber(BOIS3, "Thickness", 4*config["BOIS3"])
+    msh.field.setNumber(BOIS3, "VIn", config["BOIS3"])
+    msh.field.setNumber(BOIS3, "VOut", config["global size"])
+    msh.field.setNumber(BOIS3, "XCenter", -L)
+    msh.field.setNumber(BOIS3, "YCenter", 0)
+    msh.field.setNumber(BOIS3, "ZCenter", 0)
+
+    SPHERES = msh.field.add("Min")
+    msh.field.setNumbers(SPHERES, "FieldsList", [BOIS1, BOIS2, BOIS3])
+    msh.field.setAsBackgroundMesh(SPHERES)
+
+    # Generate mesh
     msh.generate(2)
-
-    gmsh.fltk.run()
-
-    if inward_surfaces:
-        msh.reverse(inward_surfaces)
 
     extbl = geom.extrudeBoundaryLayer(rocket_surfaces, [1] * N, heights, True)
 
@@ -167,7 +179,7 @@ def meshgen_3D(config = {}):
 
     boundary_layer_volumes = [tag for dim, tag in extbl if dim == 3]
 
-    # Rocket surfaces
+    # Rocket surfaces (tag surface)
     rocket_boundary = gmsh.model.getBoundary(rocket, combined = False,oriented = False, recursive = False)
     rocket_surfaces = [tag for dim, tag in rocket_boundary if dim == 2]
 
@@ -183,7 +195,6 @@ def meshgen_3D(config = {}):
             top.append(extbl[i-1])
 
     # Surface loops
-    # s_in = geom.addSurfaceLoop(rocket_surfaces)
     b_in = [s[1] for s in top]
     s_in = geom.addSurfaceLoop(b_in)
     s_out = geom.addSurfaceLoop(farfield_surfaces)
@@ -198,13 +209,31 @@ def meshgen_3D(config = {}):
     gmsh.model.addPhysicalGroup(2, farfield_surfaces, name = "FARFIELD")
     gmsh.model.addPhysicalGroup(2, rocket_surfaces, name = "WALL")
 
+    # Shock cone refinement geometries
+    # Extends
+    R_Cone1 = 5*L * math.tan(math.radians(45))
+    # R_Cone2 = L * math.tan(math.radians(40))
 
-    # ===========================================================
-    # Meshing
-    # ===========================================================
-    #gmsh.option.setNumber("Mesh.Algorithm3D", 4)
+    # Cones
+    LEC = occm.addCone(-L, 0, 0, 5*L, 0, 0, 0, R_Cone1)
+    # TEC = occm.addCone(L, 0, 0, L, 0, 0, 0, R_Cone2)
 
-    # BOIs
+    occm.synchronize()
+
+    # Faces
+    LEC_faces = gmsh.model.getBoundary([(3, LEC)], oriented = False)
+    # TEC_faces = gmsh.model.getBoundary([(3, TEC)], oriented = False)
+
+    # Surfaces
+    LEC_surfaces = [tag for dim, tag in LEC_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
+    # TEC_surfaces = [tag for dim, tag in TEC_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
+
+    # Remove volumes
+    occm.remove([(3, LEC)], recursive=False)
+
+    occm.synchronize()
+
+    # Cylindrical BOIs
     BOIC1 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIC1, "VIn", config["BOIC1"])
     msh.field.setNumber(BOIC1, "Radius", 7*L)
@@ -293,33 +322,6 @@ def meshgen_3D(config = {}):
     # msh.field.setNumber(BOIF3, "ZMin", 0)
     # msh.field.setNumber(BOIF3, "ZMax", 0)
 
-    BOIS1 = msh.field.add("Ball")
-    msh.field.setNumber(BOIS1, "Radius", 0.25*L)
-    msh.field.setNumber(BOIS1, "Thickness", config["BOIS1"])
-    msh.field.setNumber(BOIS1, "VIn", config["BOIS1"])
-    msh.field.setNumber(BOIS1, "VOut", config["global size"])
-    msh.field.setNumber(BOIS1, "XCenter", -L)
-    msh.field.setNumber(BOIS1, "YCenter", 0)
-    msh.field.setNumber(BOIS1, "ZCenter", 0)
-
-    BOIS2 = msh.field.add("Ball")
-    msh.field.setNumber(BOIS2, "Radius", 0.1*L)
-    msh.field.setNumber(BOIS2, "Thickness", config["BOIS2"])
-    msh.field.setNumber(BOIS2, "VIn", config["BOIS2"])
-    msh.field.setNumber(BOIS2, "VOut", config["global size"])
-    msh.field.setNumber(BOIS2, "XCenter", -L)
-    msh.field.setNumber(BOIS2, "YCenter", 0)
-    msh.field.setNumber(BOIS2, "ZCenter", 0)
-
-    BOIS3 = msh.field.add("Ball")
-    msh.field.setNumber(BOIS3, "Radius", 0.008*L)
-    msh.field.setNumber(BOIS3, "Thickness", 4*config["BOIS3"])
-    msh.field.setNumber(BOIS3, "VIn", config["BOIS3"])
-    msh.field.setNumber(BOIS3, "VOut", config["global size"])
-    msh.field.setNumber(BOIS3, "XCenter", -L)
-    msh.field.setNumber(BOIS3, "YCenter", 0)
-    msh.field.setNumber(BOIS3, "ZCenter", 0)
-    
     BOIP1 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIP1, "VIn", config["BOIP1"])
     msh.field.setNumber(BOIP1, "Radius", 0.025*L)
@@ -342,40 +344,44 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIP2, "YCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
     msh.field.setNumber(BOIP2, "ZCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
 
+    # Shock Refinement treshold
+    DISTANCE = gmsh.model.mesh.field.add("Distance")
+    gmsh.model.mesh.field.setNumbers(DISTANCE, "SurfacesList", LEC_surfaces)
+    gmsh.model.mesh.field.setNumber(DISTANCE, "Sampling", 100)
 
+    CONE = gmsh.model.mesh.field.add("Threshold")
+    gmsh.model.mesh.field.setNumber(CONE, "InField", DISTANCE)
+    gmsh.model.mesh.field.setNumber(CONE, "SizeMin", config["cone"])
+    gmsh.model.mesh.field.setNumber(CONE, "SizeMax", config["global size"])
+    gmsh.model.mesh.field.setNumber(CONE, "DistMin", 0.1*L)
+    gmsh.model.mesh.field.setNumber(CONE, "DistMax", 0.2*L)
 
     # Combine Sizings
     background = msh.field.add("Min")
-    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, 
-                                                    BOIC3, BOIC4, 
-                                                    BOIC5, BOIF1, 
-                                                    BOIF2, BOIS1, 
-                                                    BOIS2, BOIS3, 
-                                                    BOIP1, BOIP2])
+    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, 
+                                                    BOIF1, BOIF2, 
+                                                    BOIS1, BOIS2, BOIS3,
+                                                    BOIP1, BOIP2,
+                                                    CONE])
     msh.field.setAsBackgroundMesh(background)
-
 
     # Generate mesh
     msh.generate(3)
-    
 
     # If errors
     _, volume_elements, _ = msh.getElements(3, v)
     if not any(len(elements) for elements in volume_elements):
         raise RuntimeError("Gmsh did not generate 3D elements in the fluid volume.")
 
-    # ===========================================================
-    # Save results
-    # ===========================================================
     # Visualization options
     gmsh.option.setNumber("Geometry.Curves", 1)
     gmsh.option.setNumber("Geometry.Surfaces", 1)
     gmsh.option.setNumber("Mesh.VolumeFaces", 1)
-    gmsh.option.setNumber("Mesh.SaveAll", 0)  
+
     # Read save directory
     path = Path(__file__).parent / config["filename"]
     gmsh.write(str(path))
-    gmsh.fltk.run()
+    # gmsh.fltk.run()
 
     # Finalize
     gmsh.finalize()
@@ -386,102 +392,78 @@ def meshgen_3D(config = {}):
 if __name__ == "__main__":
     config = {
         "filename"              : "Mesh_japos.su2",
-        "layer thickness"       : 1.12e-4, # 9.65e-4,#
+        "layer thickness"       : 9.58e-7, # 9.65e-4,#
         "layer ratio"           : 1.21, #1.19,# 1.21
-        "total thickness"       : 0.625, #0.88, 0.5
+        "total thickness"       : 0.000625, #0.88, 0.5
         "number of layers"      : 25,#55, # 40,
-        "BOIC1"                 : 200,
-        "BOIC2"                 : 100,
-        "BOIC3"                 : 50,
-        "BOIC4"                 : 20,
-        "BOIC5"                 : 3,
-        "BOIF1"                 : 6,
-        "BOIF2"                 : 3,
-        "BOIS1"                 : 5,
-        "BOIS2"                 : 2,
-        "BOIS3"                 : 0.2,   
-        "global size"           : 400,
-        "L"                     : 368,
+        "BOIC1"                 : 0.2,
+        "BOIC2"                 : 0.1,
+        "BOIC3"                 : 0.05,
+        "BOIC4"                 : 0.02,
+        "BOIC5"                 : 0.003,
+        "BOIF1"                 : 0.006,
+        "BOIF2"                 : 0.003,
+        "BOIS1"                 : 0.005,
+        "BOIS2"                 : 0.002,
+        "BOIS3"                 : 0.001,
+        "global size"           : 0.4,
+        "L"                     : 0.368,
         "prot_loc"              : 0.75,
-        "BOIP1"                 : 1,
-        "BOIP2"                 : 2,
-        "R_radius"              : 41.5*0.5
+        "BOIP1"                 : 0.001,
+        "BOIP2"                 : 0.002,
+        "R_radius"              : 0.0415*0.5,
+        "cone"                  : 0.01
     }
 
-    meshgen_3D(config = config)
+    mesh = True
+    paraview = True
+
+    # Generate mesh
+    if mesh:
+        meshgen_3D(config = config)
 
     # Calculate metrics with SU2_CFD
+    if paraview:
+        # Paths
+        mesh_path = Path(__file__).parent / config["filename"]
+        su2_cfd_path = shutil.which("SU2_CFD")
+        paraview_path = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
 
-    #Paths
-    mesh_path = Path(__file__).parent / config["filename"]
-    su2_cfd_path = shutil.which("SU2_CFD")
-    paraview_path = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
-    if su2_cfd_path is None:
-        raise FileNotFoundError("SU2_CFD was not found. Add the SU2 bin directory to PATH.")
-    if not Path(paraview_path).is_file():
-        raise FileNotFoundError(f"ParaView was not found at {paraview_path}")
+        # Keep SU2's temporary config and output files until ParaView is closed.
+        with tempfile.TemporaryDirectory(
+            prefix = "su2_mesh_quality_",
+            dir = mesh_path.parent,
+        ) as output_dir:
+            output_dir = Path(output_dir)
+            cfg_path = output_dir / "mesh_quality.cfg"
+            quality_vtu = output_dir / "quality.vtu"
+            config_text = (
+                f"MESH_FILENAME = ../{mesh_path.name}\n"
+                "MESH_FORMAT = SU2\n"
+                "SOLVER = EULER\n"
+                "MATH_PROBLEM = DIRECT\n"
+                "MARKER_EULER = ( WALL )\n"
+                "MARKER_FAR = ( FARFIELD )\n"
+                "CONV_NUM_METHOD_FLOW = JST\n"
+                "CONV_FIELD = RMS_DENSITY\n"
+                "ITER = 0\n"
+                "MGLEVEL = 0\n"
+                "CONV_FILENAME = quality_history\n"
+                "VOLUME_FILENAME = quality\n"
+                "VOLUME_OUTPUT = ( COORDINATES, MESH_QUALITY)\n"
+                "OUTPUT_FILES = ( PARAVIEW )\n"
+            )
+            cfg_path.write_text(config_text, encoding = "ascii")
 
-    # Keep SU2's temporary config and output files until ParaView is closed.
-    with tempfile.TemporaryDirectory(
-        prefix = "su2_mesh_quality_",
-        dir = mesh_path.parent,
-    ) as output_dir:
-        output_dir = Path(output_dir)
-        cfg_path = output_dir / "mesh_quality.cfg"
-        quality_vtu = output_dir / "quality.vtu"
-        config_text = (
-            f"MESH_FILENAME = ../{mesh_path.name}\n"
-            "MESH_FORMAT = SU2\n"
-            "SOLVER = EULER\n"
-            "MATH_PROBLEM = DIRECT\n"
-            "MARKER_EULER = ( WALL )\n"
-            "MARKER_FAR = ( FARFIELD )\n"
-            "CONV_NUM_METHOD_FLOW = JST\n"
-            "CONV_FIELD = RMS_DENSITY\n"
-            "ITER = 0\n"
-            "MGLEVEL = 0\n"
-            "CONV_FILENAME = quality_history\n"
-            "VOLUME_FILENAME = quality\n"
-            "VOLUME_OUTPUT = ( COORDINATES, MESH_QUALITY)\n"
-            "OUTPUT_FILES = ( PARAVIEW )\n"
-        )
-        cfg_path.write_text(config_text, encoding = "ascii")
+            print("Calculating mesh quality with SU2_CFD...")
+            subprocess.run(
+                [su2_cfd_path, cfg_path.name],
+                cwd = output_dir,
+                check = True,
+            )
+            if not quality_vtu.is_file():
+                raise FileNotFoundError(f"SU2 did not create its quality output: {quality_vtu}")
 
-        print("Calculating mesh quality with SU2_CFD...")
-        subprocess.run(
-            [su2_cfd_path, cfg_path.name],
-            cwd = output_dir,
-            check = True,
-        )
-        if not quality_vtu.is_file():
-            raise FileNotFoundError(f"SU2 did not create its quality output: {quality_vtu}")
-
-        print("ParaView is open; close it to remove SU2's temporary output files.")
-        paraview_process = subprocess.Popen([paraview_path, str(quality_vtu)])
-        paraview_process.wait()
-
-
-
-
-
-
-    # import meshio
-    # import shutil
-    # import subprocess
-
-    # # Convert to VTU
-    # mesh = meshio.read(Path(__file__).parent / config["filename"])
-    # mesh.cell_sets.clear()
-    # vtu_path = Path(Path(__file__).parent / "Mesh.vtu").resolve()
-    # meshio.write(vtu_path, mesh)
-
-    # # Open in Paraview
-    # paraview = shutil.which("paraview") or shutil.which("paraview.exe")
-    # if paraview is None:
-    #     paraview = r"C:\Program Files\ParaView 6.2.0\bin\paraview.exe"
-    #     if not Path(paraview).is_file():
-    #         raise FileNotFoundError(
-    #             "ParaView was not found. Add paraview.exe to PATH or update its path in BL.py."
-    #         )
-
-    # subprocess.Popen([paraview, str(vtu_path)])
+            print("ParaView is open; close it to remove SU2's temporary output files.")
+            paraview_process = subprocess.Popen([paraview_path, str(quality_vtu)])
+            paraview_process.wait()
