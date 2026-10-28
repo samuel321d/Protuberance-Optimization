@@ -139,8 +139,9 @@ def meshgen_3D(config = {}):
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
 
     # Define the cone field before the first mesh generation.
-    R_Cone1 = 5*L * math.tan(math.radians(45))
-    LEC = occm.addCone(-L, 0, 0, 5*L, 0, 0, 0, R_Cone1)
+    # ===============================================================
+    R_Cone1 = L*0.5 * math.tan(math.radians(45))
+    LEC = occm.addCone(-L, 0, 0, 0.5*L, 0, 0, 0, R_Cone1)
     occm.synchronize()
 
     LEC_faces = gmsh.model.getBoundary([(3, LEC)], oriented = False)
@@ -162,8 +163,82 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(CONE, "InField", DISTANCE)
     msh.field.setNumber(CONE, "SizeMin", config["cone"])
     msh.field.setNumber(CONE, "SizeMax", config["global size"])
-    msh.field.setNumber(CONE, "DistMin", 0.1*L)
+    msh.field.setNumber(CONE, "DistMin", 0.01*L)
     msh.field.setNumber(CONE, "DistMax", 0.2*L)
+    # ========================================================================
+
+    R_Cone2 = L*0.5 * math.tan(math.radians(45))
+    LEC2 = occm.addCone(0, 0, 0, 0.5*L, 0, 0, 0, R_Cone2)
+    occm.synchronize()
+
+    LEC2_faces = gmsh.model.getBoundary([(3, LEC2)], oriented = False)
+    LEC2_surfaces = [
+        tag for dim, tag in LEC2_faces
+        if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"
+    ]
+    if not LEC2_surfaces:
+        raise RuntimeError("Could not find the cone surface for mesh refinement.")
+
+    occm.remove([(3, LEC2)], recursive = False)
+    occm.synchronize()
+
+    DISTANCE2 = msh.field.add("Distance")
+    msh.field.setNumbers(DISTANCE2, "SurfacesList", LEC2_surfaces)
+    msh.field.setNumber(DISTANCE2, "Sampling", 100)
+
+    CONE2 = msh.field.add("Threshold")
+    msh.field.setNumber(CONE2, "InField", DISTANCE2)
+    msh.field.setNumber(CONE2, "SizeMin", config["cone2"])
+    msh.field.setNumber(CONE2, "SizeMax", config["global size"])
+    msh.field.setNumber(CONE2, "DistMin", 0.01*L)
+    msh.field.setNumber(CONE2, "DistMax", 0.2*L)
+
+
+
+    # ========================================================================
+    
+
+
+
+    # ========================================================================
+
+    R_Cone3 = L*0.5 * math.tan(math.radians(45))
+    LEC3 = occm.addCone( (1-config["prot_loc"])*L - L - 10, 0, 0, 0.5*L, 0, 0, 0, R_Cone3, angle= math.pi)
+    occm.rotate([(3, LEC3)], 0, 0, 0, 1, 0, 0, -3*math.pi / 4)
+    occm.synchronize()
+    
+    
+
+    LEC3_faces = gmsh.model.getBoundary([(3, LEC3)], oriented = False)
+    LEC3_surfaces = [
+        tag for dim, tag in LEC3_faces
+        if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"
+    ]
+    if not LEC3_surfaces:
+        raise RuntimeError("Could not find the cone surface for mesh refinement.")
+    
+    occm.remove([(3, LEC3)], recursive = False)
+    occm.synchronize()
+
+    DISTANCE3 = msh.field.add("Distance")
+    msh.field.setNumbers(DISTANCE3, "SurfacesList", LEC3_surfaces)
+    msh.field.setNumber(DISTANCE3, "Sampling", 100)
+
+    CONE3 = msh.field.add("Threshold")
+    msh.field.setNumber(CONE3, "InField", DISTANCE3)
+    msh.field.setNumber(CONE3, "SizeMin", config["cone3"])
+    msh.field.setNumber(CONE3, "SizeMax", config["global size"])
+    msh.field.setNumber(CONE3, "DistMin", 0.01*L)
+    msh.field.setNumber(CONE3, "DistMax", 0.2*L)
+
+
+
+    # ========================================================================
+
+
+
+    # ========================================================================
+
 
     # Spherical BOIs
     BOIS1 = msh.field.add("Ball")
@@ -194,7 +269,7 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIS3, "ZCenter", 0)
 
     SPHERES = msh.field.add("Min")
-    msh.field.setNumbers(SPHERES, "FieldsList", [BOIS1, BOIS2, BOIS3, CONE])
+    msh.field.setNumbers(SPHERES, "FieldsList", [BOIS1, BOIS2, BOIS3, CONE, CONE2, CONE3])
     msh.field.setAsBackgroundMesh(SPHERES)
 
     # Generate mesh
@@ -353,7 +428,8 @@ def meshgen_3D(config = {}):
                                                     BOIF1, BOIF2, 
                                                     BOIS1, BOIS2, BOIS3,
                                                     BOIP1, BOIP2,
-                                                    CONE])
+                                                    CONE, CONE2 , CONE3
+                                                    ])
     msh.field.setAsBackgroundMesh(background)
 
     # Generate mesh
@@ -388,22 +464,25 @@ if __name__ == "__main__":
         "total thickness"       : 0.000625, #0.88, 0.5
         "number of layers"      : 25,#55, # 40,
         "BOIC1"                 : 0.2,
-        "BOIC2"                 : 0.2, #0.1,
-        "BOIC3"                 : 0.2, #0.05,
-        "BOIC4"                 : 0.2, #0.02,
+        "BOIC2"                 : 0.1, #0.1,
+        "BOIC3"                 : 0.05, #0.05,
+        "BOIC4"                 : 0.03, #0.02,
         "BOIC5"                 : 0.003,
-        "BOIF1"                 : 0.2, #0.006,
-        "BOIF2"                 : 0.2, #0.003,
-        "BOIS1"                 : 0.2, #0.005,
-        "BOIS2"                 : 0.2, #0.002,
-        "BOIS3"                 : 0.2, #0.001,
+        "BOIF1"                 : 0.01, #0.006,
+        "BOIF2"                 : 0.005, #0.003,
+        "BOIS1"                 : 0.005, #0.005,
+        "BOIS2"                 : 0.002, #0.002,
+        "BOIS3"                 : 0.001, #0.001,
         "global size"           : 0.4,
         "L"                     : 0.368,
         "prot_loc"              : 0.75,
         "BOIP1"                 : 0.001,
         "BOIP2"                 : 0.002,
         "R_radius"              : 0.0415*0.5,
-        "cone"                  : 0.01
+        "cone"                  : 0.003,
+        "cone2"                 : 0.003,
+        "cone3"                 : 0.003,
+        "Prot_height"           : 6.225
     }
 
     mesh = True

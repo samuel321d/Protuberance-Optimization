@@ -1,1 +1,1 @@
-occ.remove([(3, cono)], recursive=False)
+CONE
