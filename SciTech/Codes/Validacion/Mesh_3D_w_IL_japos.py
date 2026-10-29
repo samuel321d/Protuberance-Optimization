@@ -140,8 +140,8 @@ def meshgen_3D(config = {}):
 
     # Define the cone field before the first mesh generation.
     # ===============================================================
-    R_Cone1 = L*0.5 * math.tan(math.radians(45))
-    LEC = occm.addCone(-L, 0, 0, 0.5*L, 0, 0, 0, R_Cone1)
+    R_Cone1 = L * math.tan(math.radians(45))
+    LEC = occm.addCone(-L, 0, 0, L, 0, 0, 0, R_Cone1)
     occm.synchronize()
 
     LEC_faces = gmsh.model.getBoundary([(3, LEC)], oriented = False)
@@ -167,8 +167,8 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(CONE, "DistMax", 0.2*L)
     # ========================================================================
 
-    R_Cone2 = L*0.5 * math.tan(math.radians(45))
-    LEC2 = occm.addCone(0, 0, 0, 0.5*L, 0, 0, 0, R_Cone2)
+    R_Cone2 = L * math.tan(math.radians(45))
+    LEC2 = occm.addCone(0, 0, 0, L, 0, 0, 0, R_Cone2)
     occm.synchronize()
 
     LEC2_faces = gmsh.model.getBoundary([(3, LEC2)], oriented = False)
@@ -202,8 +202,8 @@ def meshgen_3D(config = {}):
 
     # ========================================================================
 
-    R_Cone3 = L*0.5 * math.tan(math.radians(45))
-    LEC3 = occm.addCone( (1-config["prot_loc"])*L - L - 10, 0, 0, 0.5*L, 0, 0, 0, R_Cone3, angle= math.pi)
+    R_Cone3 = L* math.tan(math.radians(45))
+    LEC3 = occm.addCone( (1-config["prot_loc"])*L - L - 10, 0, 0, L, 0, 0, 0, R_Cone3, angle= math.pi)
     occm.rotate([(3, LEC3)], 0, 0, 0, 1, 0, 0, -3*math.pi / 4)
     occm.synchronize()
     
