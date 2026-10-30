@@ -420,6 +420,15 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(WALL, "SizeMax", config["global size"])
     msh.field.setNumber(WALL, "DistMin", 0.001*L)
     msh.field.setNumber(WALL, "DistMax", 0.01*L)
+
+    BOICELDA = msh.field.add("Ball")
+    msh.field.setNumber(BOICELDA, "Radius", 0.02)
+    msh.field.setNumber(BOICELDA, "Thickness", 0.02)
+    msh.field.setNumber(BOICELDA, "VIn", config["BOICELDA"])
+    msh.field.setNumber(BOICELDA, "VOut", config["global size"])
+    msh.field.setNumber(BOICELDA, "XCenter", -0.215609)
+    msh.field.setNumber(BOICELDA, "YCenter", -0.0176762)
+    msh.field.setNumber(BOICELDA, "ZCenter", 0.010868)
     
     # Combine Sizings
     background = msh.field.add("Min")
@@ -428,7 +437,8 @@ def meshgen_3D(config = {}):
                                                     BOIS1, BOIS2, BOIS3,
                                                     BOIP1, BOIP2,
                                                     CONE, CONE2 ,CONE3,
-                                                    WALL
+                                                    WALL,
+                                                    BOICELDA
                                                     ])
     msh.field.setAsBackgroundMesh(background)
 
@@ -458,7 +468,7 @@ def meshgen_3D(config = {}):
 # ===========================================================
 if __name__ == "__main__":
     config = {
-        "filename"              : "Mesh_C.su2", # C - M - F
+        "filename"              : "Mesh_M.su2", # C - M - F
         "layer thickness"       : 9.58e-7, # 9.58e-7 - 
         "layer ratio"           : 1.21, # 1.21 - 
         "total thickness"       : 0.000625, # 0.000625 - 
@@ -484,6 +494,7 @@ if __name__ == "__main__":
         "cone2"                 : 0.01, # 0.01 - 
         "cone3"                 : 0.004, # 0.004 - 
         "wall size"             : 0.002, # 0.002 - 
+        "BOICELDA"              : 0.001,
         "Prot_height"           : 6.225
     }
 
