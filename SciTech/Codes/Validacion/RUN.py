@@ -19,8 +19,8 @@ General structure:
 # ==========================================================
 
 import os
-import numpy as np
 import subprocess
+import numpy as np
 import pandas as pd
 
 import shutil
@@ -74,11 +74,40 @@ def plot_residuals_live(history_file, ax, lines):
     ax.relim()
     ax.autoscale_view()
 
+def plot_monitor(
+    history_file, ax, lines, monitor, x_column="Inner_Iter", legend_loc="upper right"
+):
+    """Actualiza un monitor individual en su propio eje."""
+    if not os.path.exists(history_file):
+        return
+    try:
+        df = pd.read_csv(history_file, skipinitialspace=True)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+        return
+
+    df.columns = df.columns.str.strip().str.replace('"', '', regex=False)
+    if df.empty:
+        return
+    if x_column not in df.columns:
+        raise KeyError(f"Columna de eje X no encontrada en {history_file}: {x_column}")
+    if monitor not in df.columns:
+        raise KeyError(f"Columna monitor no encontrada en {history_file}: {monitor}")
+
+    x_values = pd.to_numeric(df[x_column], errors="coerce")
+    y_values = pd.to_numeric(df[monitor], errors="coerce")
+    valid = x_values.notna() & y_values.notna()
+    if monitor not in lines:
+        (lines[monitor],) = ax.plot([], [], label=monitor)
+    lines[monitor].set_data(x_values[valid], y_values[valid])
+    ax.relim()
+    ax.autoscale_view()
+    ax.legend(loc=legend_loc, fontsize=8)
+
 
 def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
     config_file = os.path.abspath(config_file)
     output_files_path = os.path.abspath(output_files_path)
-    history_file = os.path.join(output_files_path, "history_2deg.csv")
+    history_file = os.path.join(output_files_path, "history_C.csv")
     print(f"Running SU2 with configuration file: {config_file}")
 
     cmd = [MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file]
@@ -92,12 +121,36 @@ def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
     ax.set_title("Residuals")
     ax.grid(True)
     lines = {}
+    monitor_plots = {}
+    for monitor in ("CFx", "CFy"):
+        _, monitor_ax = plt.subplots(figsize=(9, 5))
+        monitor_ax.set_xlabel("Inner_Iter")
+        monitor_ax.set_ylabel(monitor)
+        monitor_ax.set_title(f"{monitor} convergence")
+        monitor_ax.grid(True)
+        monitor_plots[monitor] = (monitor_ax, {})
 
     try:
         while su2_process.poll() is None:
             plot_residuals_live(history_file, ax, lines)
+            for monitor, (monitor_ax, monitor_lines) in monitor_plots.items():
+                plot_monitor(
+                    history_file,
+                    monitor_ax,
+                    monitor_lines,
+                    monitor,
+                    x_column="Inner_Iter",
+                )
             plt.pause(plot_every)   # reemplaza time.sleep y mantiene la GUI viva
         plot_residuals_live(history_file, ax, lines)  # última actualización
+        for monitor, (monitor_ax, monitor_lines) in monitor_plots.items():
+            plot_monitor(
+                history_file,
+                monitor_ax,
+                monitor_lines,
+                monitor,
+                x_column="Inner_Iter",
+            )
         plt.pause(0.1)
     except KeyboardInterrupt:
         su2_process.terminate()
@@ -134,5 +187,3 @@ mesh_file_name = "Mesh_japos.su2"
 #========================================================================================
 surface_output_file, volume_output_file = run_solver(config_file, folder, n_processors=16)
 #========================================================================================
-
-
