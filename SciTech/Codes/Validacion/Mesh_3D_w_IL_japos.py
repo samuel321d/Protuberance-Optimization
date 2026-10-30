@@ -45,7 +45,7 @@ def meshgen_3D(config = {}):
         "BOIC2"                 : 100,
         "BOIC3"                 : 50,
         "BOIC4"                 : 20,
-        "BOIC5"                 : 7,
+        "BOIC6"                 : 7,
         "BOIF1"                 : 5,
         "BOIF2"                 : 3,
         "BOIS1"                 : 5,
@@ -138,112 +138,89 @@ def meshgen_3D(config = {}):
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
 
-    # Define the cone field before the first mesh generation.
-    # ===============================================================
-    R_Cone1 = L * math.tan(math.radians(45))
-    LEC = occm.addCone(-L, 0, 0, L, 0, 0, 0, R_Cone1)
+    # Refinement cone 1
+    R_Cone1 = 0.9*L * math.tan(math.radians(45))
+    LEC = occm.addCone(-L, 0, 0, 0.9*L, 0, 0, 0, R_Cone1)
+
     occm.synchronize()
 
     LEC_faces = gmsh.model.getBoundary([(3, LEC)], oriented = False)
-    LEC_surfaces = [
-        tag for dim, tag in LEC_faces
-        if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"
-    ]
+    LEC_surfaces = [tag for dim, tag in LEC_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
     if not LEC_surfaces:
         raise RuntimeError("Could not find the cone surface for mesh refinement.")
 
     occm.remove([(3, LEC)], recursive = False)
+
     occm.synchronize()
 
     DISTANCE = msh.field.add("Distance")
     msh.field.setNumbers(DISTANCE, "SurfacesList", LEC_surfaces)
-    msh.field.setNumber(DISTANCE, "Sampling", 100)
+    msh.field.setNumber(DISTANCE, "Sampling", 1000)
 
     CONE = msh.field.add("Threshold")
     msh.field.setNumber(CONE, "InField", DISTANCE)
     msh.field.setNumber(CONE, "SizeMin", config["cone"])
     msh.field.setNumber(CONE, "SizeMax", config["global size"])
     msh.field.setNumber(CONE, "DistMin", 0.01*L)
-    msh.field.setNumber(CONE, "DistMax", 0.2*L)
-    # ========================================================================
+    msh.field.setNumber(CONE, "DistMax", 0.4*L)
 
-    R_Cone2 = L * math.tan(math.radians(45))
-    LEC2 = occm.addCone(0, 0, 0, L, 0, 0, 0, R_Cone2)
+    # Refinement cone 2
+    R_Cone2 = 0.9*L * math.tan(math.radians(45))
+    LEC2 = occm.addCone(0, 0, 0, 0.9*L, 0, 0, 0, R_Cone2)
+
     occm.synchronize()
 
     LEC2_faces = gmsh.model.getBoundary([(3, LEC2)], oriented = False)
-    LEC2_surfaces = [
-        tag for dim, tag in LEC2_faces
-        if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"
-    ]
+    LEC2_surfaces = [tag for dim, tag in LEC2_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
     if not LEC2_surfaces:
         raise RuntimeError("Could not find the cone surface for mesh refinement.")
 
     occm.remove([(3, LEC2)], recursive = False)
+
     occm.synchronize()
 
     DISTANCE2 = msh.field.add("Distance")
     msh.field.setNumbers(DISTANCE2, "SurfacesList", LEC2_surfaces)
-    msh.field.setNumber(DISTANCE2, "Sampling", 100)
+    msh.field.setNumber(DISTANCE2, "Sampling", 1000)
 
     CONE2 = msh.field.add("Threshold")
     msh.field.setNumber(CONE2, "InField", DISTANCE2)
     msh.field.setNumber(CONE2, "SizeMin", config["cone2"])
     msh.field.setNumber(CONE2, "SizeMax", config["global size"])
     msh.field.setNumber(CONE2, "DistMin", 0.01*L)
-    msh.field.setNumber(CONE2, "DistMax", 0.2*L)
+    msh.field.setNumber(CONE2, "DistMax", 2*L)
 
-
-
-    # ========================================================================
-    
-
-
-
-    # ========================================================================
-
-    R_Cone3 = L* math.tan(math.radians(45))
-    LEC3 = occm.addCone( (1-config["prot_loc"])*L - L - 10, 0, 0, L, 0, 0, 0, R_Cone3, angle= math.pi)
+    # Refinement cone 3
+    R_Cone3 = 0.4*L* math.tan(math.radians(45))
+    LEC3 = occm.addCone( (1-config["prot_loc"])*L - L -0.04, 0, 0, 0.4*L, 0, 0, 0, R_Cone3, angle= math.pi)
     occm.rotate([(3, LEC3)], 0, 0, 0, 1, 0, 0, -3*math.pi / 4)
+
     occm.synchronize()
-    
-    
 
     LEC3_faces = gmsh.model.getBoundary([(3, LEC3)], oriented = False)
-    LEC3_surfaces = [
-        tag for dim, tag in LEC3_faces
-        if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"
-    ]
+    LEC3_surfaces = [tag for dim, tag in LEC3_faces if dim == 2 and gmsh.model.getType(dim, tag) == "Cone"]
     if not LEC3_surfaces:
         raise RuntimeError("Could not find the cone surface for mesh refinement.")
     
     occm.remove([(3, LEC3)], recursive = False)
+
     occm.synchronize()
 
     DISTANCE3 = msh.field.add("Distance")
     msh.field.setNumbers(DISTANCE3, "SurfacesList", LEC3_surfaces)
-    msh.field.setNumber(DISTANCE3, "Sampling", 100)
+    msh.field.setNumber(DISTANCE3, "Sampling", 1000)
 
     CONE3 = msh.field.add("Threshold")
     msh.field.setNumber(CONE3, "InField", DISTANCE3)
     msh.field.setNumber(CONE3, "SizeMin", config["cone3"])
     msh.field.setNumber(CONE3, "SizeMax", config["global size"])
     msh.field.setNumber(CONE3, "DistMin", 0.01*L)
-    msh.field.setNumber(CONE3, "DistMax", 0.2*L)
-
-
-
-    # ========================================================================
-
-
-
-    # ========================================================================
-
+    msh.field.setNumber(CONE3, "DistMax", 0.8*L)
 
     # Spherical BOIs
     BOIS1 = msh.field.add("Ball")
     msh.field.setNumber(BOIS1, "Radius", 0.25*L)
-    msh.field.setNumber(BOIS1, "Thickness", config["BOIS1"])
+    msh.field.setNumber(BOIS1, "Thickness", 4*config["BOIS1"])
     msh.field.setNumber(BOIS1, "VIn", config["BOIS1"])
     msh.field.setNumber(BOIS1, "VOut", config["global size"])
     msh.field.setNumber(BOIS1, "XCenter", -L)
@@ -306,7 +283,7 @@ def meshgen_3D(config = {}):
 
     geom.synchronize()
 
-    # Export the boundary markers required by SU2's mesh reader.
+    # Physical groups
     gmsh.model.addPhysicalGroup(3, [v, *boundary_layer_volumes], name = "FLUID")
     gmsh.model.addPhysicalGroup(2, farfield_surfaces, name = "FARFIELD")
     gmsh.model.addPhysicalGroup(2, rocket_surfaces, name = "WALL")
@@ -358,14 +335,25 @@ def meshgen_3D(config = {}):
 
     BOIC5 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIC5, "VIn", config["BOIC5"])
-    msh.field.setNumber(BOIC5, "Radius", 0.1*L)
+    msh.field.setNumber(BOIC5, "Radius", 0.5*L)
     msh.field.setNumber(BOIC5, "VOut", config["global size"])
-    msh.field.setNumber(BOIC5, "XAxis", 0.6*L)
+    msh.field.setNumber(BOIC5, "XAxis", 0.8*L)
     msh.field.setNumber(BOIC5, "YAxis", 0)
     msh.field.setNumber(BOIC5, "ZAxis", 0)
     msh.field.setNumber(BOIC5, "XCenter", -0.5*L)
     msh.field.setNumber(BOIC5, "YCenter", 0)
     msh.field.setNumber(BOIC5, "ZCenter", 0)
+
+    BOIC6 = msh.field.add("Cylinder")
+    msh.field.setNumber(BOIC6, "VIn", config["BOIC6"])
+    msh.field.setNumber(BOIC6, "Radius", 0.15*L)
+    msh.field.setNumber(BOIC6, "VOut", config["global size"])
+    msh.field.setNumber(BOIC6, "XAxis", 0.6*L)
+    msh.field.setNumber(BOIC6, "YAxis", 0)
+    msh.field.setNumber(BOIC6, "ZAxis", 0)
+    msh.field.setNumber(BOIC6, "XCenter", -0.5*L)
+    msh.field.setNumber(BOIC6, "YCenter", 0)
+    msh.field.setNumber(BOIC6, "ZCenter", 0)
 
     BOIF1 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIF1, "VIn", config["BOIF1"])
@@ -408,27 +396,39 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIP1, "YAxis", 0)
     msh.field.setNumber(BOIP1, "ZAxis", 0)
     msh.field.setNumber(BOIP1, "XCenter", (1-config["prot_loc"])*L - L)
-    msh.field.setNumber(BOIP1, "YCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
-    msh.field.setNumber(BOIP1, "ZCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
+    msh.field.setNumber(BOIP1, "YCenter", 0.9*config["R_radius"]*np.cos(np.deg2rad(45)))
+    msh.field.setNumber(BOIP1, "ZCenter", 0.9*config["R_radius"]*np.cos(np.deg2rad(45)))
 
     BOIP2 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIP2, "VIn", config["BOIP2"])
-    msh.field.setNumber(BOIP2, "Radius", 0.05*L)
+    msh.field.setNumber(BOIP2, "Radius", 0.045*L)
     msh.field.setNumber(BOIP2, "VOut", config["global size"])
     msh.field.setNumber(BOIP2, "XAxis", 0.4*L)
     msh.field.setNumber(BOIP2, "YAxis", 0)
     msh.field.setNumber(BOIP2, "ZAxis", 0)
-    msh.field.setNumber(BOIP2, "XCenter", 0.6*L - L)
-    msh.field.setNumber(BOIP2, "YCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
-    msh.field.setNumber(BOIP2, "ZCenter", config["R_radius"]*np.cos(np.deg2rad(45)))
+    msh.field.setNumber(BOIP2, "XCenter", 0.4*L - L)
+    msh.field.setNumber(BOIP2, "YCenter", 0.9*config["R_radius"]*np.cos(np.deg2rad(45)))
+    msh.field.setNumber(BOIP2, "ZCenter", 0.9*config["R_radius"]*np.cos(np.deg2rad(45)))
 
+    DISTANCE3 = msh.field.add("Distance")
+    msh.field.setNumbers(DISTANCE3, "SurfacesList", rocket_surfaces)
+    msh.field.setNumber(DISTANCE3, "Sampling", 1000)
+
+    WALL = msh.field.add("Threshold")
+    msh.field.setNumber(WALL, "InField", DISTANCE3)
+    msh.field.setNumber(WALL, "SizeMin", config["wall size"])
+    msh.field.setNumber(WALL, "SizeMax", config["global size"])
+    msh.field.setNumber(WALL, "DistMin", 0.001*L)
+    msh.field.setNumber(WALL, "DistMax", 0.01*L)
+    
     # Combine Sizings
     background = msh.field.add("Min")
-    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, 
+    msh.field.setNumbers(background, "FieldsList", [BOIC1, BOIC2, BOIC3, BOIC4, BOIC5, BOIC6, 
                                                     BOIF1, BOIF2, 
                                                     BOIS1, BOIS2, BOIS3,
                                                     BOIP1, BOIP2,
-                                                    CONE, CONE2 , CONE3
+                                                    CONE, CONE2 ,CONE3,
+                                                    WALL
                                                     ])
     msh.field.setAsBackgroundMesh(background)
 
@@ -458,30 +458,32 @@ def meshgen_3D(config = {}):
 # ===========================================================
 if __name__ == "__main__":
     config = {
-        "filename"              : "Mesh_japos.su2",
-        "layer thickness"       : 9.58e-7, # 9.65e-4,#
-        "layer ratio"           : 1.21, #1.19,# 1.21
-        "total thickness"       : 0.000625, #0.88, 0.5
-        "number of layers"      : 25,#55, # 40,
-        "BOIC1"                 : 0.2,
-        "BOIC2"                 : 0.1, #0.1,
-        "BOIC3"                 : 0.05, #0.05,
-        "BOIC4"                 : 0.03, #0.02,
-        "BOIC5"                 : 0.003,
-        "BOIF1"                 : 0.01, #0.006,
-        "BOIF2"                 : 0.005, #0.003,
-        "BOIS1"                 : 0.005, #0.005,
-        "BOIS2"                 : 0.002, #0.002,
-        "BOIS3"                 : 0.001, #0.001,
-        "global size"           : 0.4,
+        "filename"              : "Mesh_M.su2", # C - M - F
+        "layer thickness"       : 9.58e-7, # 9.58e-7 - 
+        "layer ratio"           : 1.21, # 1.21 - 
+        "total thickness"       : 0.000625, # 0.000625 - 
+        "number of layers"      : 25, # 25 - 
+        "BOIC1"                 : 0.2, # 0.2 - 
+        "BOIC2"                 : 0.1, # 0.1 - 
+        "BOIC3"                 : 0.05, # 0.05 - 
+        "BOIC4"                 : 0.025, # 0.02 - 
+        "BOIC5"                 : 0.008, # 0.01 - 
+        "BOIC6"                 : 0.003, # 0.005
+        "BOIF1"                 : 0.008, # 0.01 - 
+        "BOIF2"                 : 0.003, # 0.005 - 
+        "BOIS1"                 : 0.005, # 0.005 - 
+        "BOIS2"                 : 0.0025, # 0.0025 - 
+        "BOIS3"                 : 0.001, # 0.001 - 
+        "global size"           : 0.4, # 0.4 - 
         "L"                     : 0.368,
         "prot_loc"              : 0.75,
-        "BOIP1"                 : 0.001,
-        "BOIP2"                 : 0.002,
-        "R_radius"              : 0.0415*0.5,
-        "cone"                  : 0.003,
-        "cone2"                 : 0.003,
-        "cone3"                 : 0.003,
+        "BOIP1"                 : 0.001, # 0.001 - 
+        "BOIP2"                 : 0.0025, # 0.0025 - 
+        "R_radius"              : 0.02075,
+        "cone"                  : 0.003, # 0.004 - 
+        "cone2"                 : 0.01, # 0.01 - 
+        "cone3"                 : 0.003, # 0.004 - 
+        "wall size"             : 0.0015, # 0.002 - 
         "Prot_height"           : 6.225
     }
 
