@@ -107,7 +107,7 @@ def plot_monitor(
 def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
     config_file = os.path.abspath(config_file)
     output_files_path = os.path.abspath(output_files_path)
-    history_file = os.path.join(output_files_path, "history_C.csv")
+    history_file = os.path.join(output_files_path, "history_M.csv")
     print(f"Running SU2 with configuration file: {config_file}")
 
     cmd = [MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file]
@@ -177,7 +177,7 @@ def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
 # Config and mesh files 
 #========================================================================================
 config_file = "Rocket_japos_3d.cfg"
-mesh_file_name = "Mesh_japos.su2"
+mesh_file_name = "Mesh_M.su2"
 #========================================================================================
 
 #========================================================================================
