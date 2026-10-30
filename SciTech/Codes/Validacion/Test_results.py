@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-history = pd.read_csv("history_2deg.csv")
+history = pd.read_csv("history_C.csv")
 
 print(history.head(5))
 
@@ -25,17 +25,17 @@ plt.title("RMS Residuals")
 plt.show()
 
 plt.figure(2)
-plt.plot(history["Inner_Iter"],history[ '       "CD"       '])
+plt.plot(history["Inner_Iter"], history['       "CFx"      '])
 plt.grid()
 plt.xlabel("Iteration")
-plt.ylabel("CD")
-plt.title("CD convergence plot")
+plt.ylabel("CA")
+plt.title("CA convergence plot")
 plt.show()
 
 plt.figure(3)
-plt.plot(history["Inner_Iter"],history[ '       "CL"       '])
+plt.plot(history["Inner_Iter"], history['       "CFy"      '])
 plt.grid()
 plt.xlabel("Iteration")
-plt.ylabel("CL")
-plt.title("CD convergence plot")
+plt.ylabel("CFy")
+plt.title("Cy convergence plot")
 plt.show()
