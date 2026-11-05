@@ -467,37 +467,112 @@ def meshgen_3D(config = {}):
 # Test
 # ===========================================================
 if __name__ == "__main__":
-    # Fine sizes estimated from 4.6M elements using h_fine = h_medium * (4.6 / 6.75) ** (1 / 3).
-    config = {
-        "filename"              : "Mesh_F.su2", # C - M - F
-        "layer thickness"       : 9.58e-7, # 9.58e-7 - 9.58e-7 - 9.58e-7
-        "layer ratio"           : 1.21, # 1.21 - 1.21 - 1.21
-        "total thickness"       : 0.000525, # 0.000625 - 0.000625 - 0.000625
-        "number of layers"      : 35, # 25 - 25 - 25
-        "BOIC1"                 : 0.154, # 0.2 - 0.175 - 0.154
-        "BOIC2"                 : 0.077, # 0.1 - 0.0875 - 0.077
-        "BOIC3"                 : 0.0385, # 0.05 - 0.0437 - 0.0385
-        "BOIC4"                 : 0.0154, # 0.02 - 0.0175 - 0.0154
-        "BOIC5"                 : 0.00769, # 0.01 - 0.00874 - 0.00769
-        "BOIC6"                 : 0.00385, # 0.005 - 0.00437 - 0.00385
-        "BOIF1"                 : 0.00769, # 0.01 - 0.00874 - 0.00769
-        "BOIF2"                 : 0.00385, # 0.005 - 0.00437 - 0.00385
-        "BOIS1"                 : 0.00385, # 0.005 - 0.00437 - 0.00385
-        "BOIS2"                 : 0.00192, # 0.0025 - 0.00218 - 0.00192
-        "BOIS3"                 : 0.000769, # 0.001 - 0.000874 - 0.000769
-        "global size"           : 0.308, # 0.4 - 0.35 - 0.308
+    config_C = {
+        "filename"              : "Mesh_C.su2",
+        "layer thickness"       : 9.58e-7,
+        "layer ratio"           : 1.21,
+        "total thickness"       : 0.000625,
+        "number of layers"      : 25,
+        "BOIC1"                 : 0.2,
+        "BOIC2"                 : 0.1,
+        "BOIC3"                 : 0.05,
+        "BOIC4"                 : 0.02,
+        "BOIC5"                 : 0.01,
+        "BOIC6"                 : 0.005,
+        "BOIF1"                 : 0.01,
+        "BOIF2"                 : 0.005,
+        "BOIS1"                 : 0.005,
+        "BOIS2"                 : 0.0025,
+        "BOIS3"                 : 0.001,
+        "global size"           : 0.4,
         "L"                     : 0.368,
         "prot_loc"              : 0.75,
-        "BOIP1"                 : 0.000769, # 0.001 - 0.000874 - 0.000769
-        "BOIP2"                 : 0.00192, # 0.0025 - 0.00218 - 0.00192
+        "BOIP1"                 : 0.001,
+        "BOIP2"                 : 0.0025,
         "R_radius"              : 0.02075,
-        "cone"                  : 0.00308, # 0.004 - 0.0035 - 0.00308
-        "cone2"                 : 0.00769, # 0.01 - 0.00874 - 0.00769
-        "cone3"                 : 0.00308, # 0.004 - 0.0035 - 0.00308
-        "wall size"             : 0.00154, # 0.002 - 0.00175 - 0.00154
-        "BOICELDA"              : 0.000769, # 0.001 - 0.000874 - 0.000769
-        "Prot_height"           : 6.225
+        "cone"                  : 0.004,
+        "cone2"                 : 0.01,
+        "cone3"                 : 0.004,
+        "wall size"             : 0.002,
+        "BOICELDA"              : 0.001,
+        "Prot_height"           : 6.225,
     }
+
+    config_M = {
+        **config_C,
+        "filename"              : "Mesh_M.su2",
+        "BOIC1"                 : 0.175,
+        "BOIC2"                 : 0.0875,
+        "BOIC3"                 : 0.0437,
+        "BOIC4"                 : 0.0175,
+        "BOIC5"                 : 0.00874,
+        "BOIC6"                 : 0.00437,
+        "BOIF1"                 : 0.00874,
+        "BOIF2"                 : 0.00437,
+        "BOIS1"                 : 0.00437,
+        "BOIS2"                 : 0.00218,
+        "BOIS3"                 : 0.000874,
+        "global size"           : 0.35,
+        "BOIP1"                 : 0.000874,
+        "BOIP2"                 : 0.00218,
+        "cone"                  : 0.0035,
+        "cone2"                 : 0.00874,
+        "cone3"                 : 0.0035,
+        "wall size"             : 0.00175,
+        "BOICELDA"              : 0.000874,
+    }
+
+    config_F = {
+        **config_C,
+        "total thickness"       : 0.0004,
+        "filename"              : "Mesh_F.su2",
+        "BOIC1"                 : 0.2,
+        "BOIC2"                 : 0.1,
+        "BOIC3"                 : 0.05,
+        "BOIC4"                 : 0.02,
+        "BOIC5"                 : 0.007,
+        "BOIC6"                 : 0.003,
+        "BOIF1"                 : 0.008,
+        "BOIF2"                 : 0.004,
+        "BOIS1"                 : 0.004,
+        "BOIS2"                 : 0.0015,
+        "BOIS3"                 : 0.0005,
+        "total thickness"       : 0.0004,
+        "global size"           : 0.4,
+        "BOIP1"                 : 0.0006,
+        "BOIP2"                 : 0.0015,
+        "cone"                  : 0.003,
+        "cone2"                 : 0.007,
+        "cone3"                 : 0.003,
+        "wall size"             : 0.0013,
+        "BOICELDA"              : 0.1,
+    }
+
+    config_M2 = {
+        **config_M,
+        "filename"              : "Mesh_M2.su2",
+        "layer ratio"           : 1.21,
+        "total thickness"       : 0.0006,
+        "number of layers"      : 20,
+    }
+
+    config_F2 = {
+        **config_F,
+        "filename"              : "Mesh_F2.su2",
+        "layer ratio"           : 1.19,
+        "total thickness"       : 0.0004,
+        "number of layers"      : 20,
+    }
+
+    configs = {
+        "C": config_C,
+        "M": config_M,
+        "F": config_F,
+        "M2": config_M2,
+        "F2": config_F2,
+    }
+
+    config = configs["F2"]
 
     mesh = True
     paraview = True
