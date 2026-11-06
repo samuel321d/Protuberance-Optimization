@@ -35,19 +35,26 @@ U, V = np.meshgrid(u, v)
 X = U * L
 Y = g(X) + V * (h(X)-g(X))
 
-x = np.linspace(0, L, 100)
+x = np.linspace(0, L, 50)
 
 
 normalized_bounds = np.array([
-  [-1,-1],
-  [1,1],
-  [-1,1],
-  [1,-1],
-  [0,0],
-  [-1,0],
-  [1,0],
-  [0,-1],
-  [0, 1]
+    [-1,-1],
+    [1,1],
+    [-1,1],
+    [1,-1],
+    [0,0],
+    [-1,0],
+    [1,0],
+    [0,-1],
+    [0, 1],
+    # From here are the additional points
+    [-0.5, 1.0],
+    [0.5, 1.0],
+    [-0.5, -1.0],
+    [0.5, -1.0],
+    [-0.5, 0.0],
+    [0.5, 0.0]
 ])
 
 bound = [0,1]
@@ -80,7 +87,7 @@ for mapped in mapped_values:
     real_values.append([p,q])
 
 
-"""
+
 for value in real_values:
     profile = generate_hermite_paper_fairing(value[0], value[1],
                                             nps = 30, export_filename = f"protuberance_coords_{value[0]}_{value[1]}.csv")
@@ -90,7 +97,6 @@ for value in real_values:
 
 
 
-"""
 
 
 
@@ -204,8 +210,8 @@ plt.contour(
 )
 
 real_values = np.array(real_values)
-plt.scatter(real_values[:,0], real_values[:,1], color = "#FF0000", label = "CCD points", marker = "v", s = 64, zorder = 5)
-
+plt.scatter(real_values[:9,0], real_values[:9,1], color = "#FF0000", label = "CCD points", marker = "v", s = 64, zorder = 5)
+plt.scatter(real_values[9:,0], real_values[9:,1], color = "#960676", label = "Additional points", marker = "v", s = 64, zorder = 5)
 from scipy.interpolate import interp1d
 
 for i in range(X.shape[0]):
