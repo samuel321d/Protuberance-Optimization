@@ -6,7 +6,6 @@ pandas
 scipy
 matplotlib
 gmsh
-ezdxf
 meshio
 
 The content is organized as follows:
