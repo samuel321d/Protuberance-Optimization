@@ -462,6 +462,7 @@ if __name__ == "__main__":
         "layer ratio"           : 1.21,
         "total thickness"       : 0.000625,
         "number of layers"      : 25,
+
         "BOIC1"                 : 0.2,
         "BOIC2"                 : 0.1,
         "BOIC3"                 : 0.05,
@@ -473,6 +474,7 @@ if __name__ == "__main__":
         "BOIS1"                 : 0.005,
         "BOIS2"                 : 0.0025,
         "BOIS3"                 : 0.001,
+        
         "global size"           : 0.4,
         "L"                     : 0.368,
         "prot_loc"              : 0.75,
@@ -587,6 +589,41 @@ if __name__ == "__main__":
         "BOICELDA"              : 0.1,
     }
 
+    config_CAT = {
+        **config_C,
+        "filename"              : "Mesh_cat.su2",
+        "layer ratio"           : 1.19,
+        "total thickness"       : 0.004,
+        "number of layers"      : 20,
+
+        "BOIC1"                 : 0.2,
+        "BOIC2"                 : 0.1,
+        "BOIC3"                 : 0.05,
+        "BOIC4"                 : 0.02,
+        "BOIC5"                 : 0.007,
+        "BOIC6"                 : 0.003,
+        "BOIF1"                 : 0.008,
+        "BOIF2"                 : 0.004,
+        "BOIS1"                 : 0.004,
+        "BOIS2"                 : 0.0015,
+        "BOIS3"                 : 0.0005,
+        "global size"           : 0.4,
+        "L"                     : 3.24,
+        "prot_loc"              : 0.62,
+        "BOIP1"                 : 0.006,
+        "BOIP2"                 : 0.015,
+        "R_radius"              : 0.087,
+        "cone"                  : 0.03,
+        "cone2"                 : 0.07,
+        "cone3"                 : 0.03,
+        "wall size"             : 0.013,
+        "BOICELDA"              : 0.1,
+        "Prot_height"           : 6.225,
+    }
+
+
+
+
     configs = {
         "C": config_C,
         "M": config_M,
@@ -595,9 +632,10 @@ if __name__ == "__main__":
         "M2": config_M2,
         "F2": config_F2,
         "SF": config_SF,
+        "CT": config_CAT
     }
 
-    config = configs["C2"]
+    config = configs["CT"]
 
     mesh = True
     paraview = True
