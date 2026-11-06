@@ -548,6 +548,13 @@ if __name__ == "__main__":
         "BOICELDA"              : 0.1,
     }
 
+    config_C2 = {
+        **config_C,
+        "filename"              : "Mesh_C2.su2",
+        "number of layers"      : 20,
+        "BOICELDA"              : 0.1
+    }
+
     config_M2 = {
         **config_M,
         "filename"              : "Mesh_M2.su2",
@@ -564,15 +571,44 @@ if __name__ == "__main__":
         "number of layers"      : 20,
     }
 
+    config_SF = {
+        **config_F,
+        "filename"              : "Mesh_SF.su2",
+        "layer ratio"           : 1.19,
+        "total thickness"       : 0.0003,
+        "number of layers"      : 20,
+        "BOIC1"                 : 0.2,
+        "BOIC2"                 : 0.1,
+        "BOIC3"                 : 0.045,
+        "BOIC4"                 : 0.015,
+        "BOIC5"                 : 0.0055,
+        "BOIC6"                 : 0.0025,
+        "BOIF1"                 : 0.007,
+        "BOIF2"                 : 0.0035,
+        "BOIS1"                 : 0.0035,
+        "BOIS2"                 : 0.001,
+        "BOIS3"                 : 0.0003,
+        "global size"           : 0.4,
+        "BOIP1"                 : 0.0005,
+        "BOIP2"                 : 0.00125,
+        "cone"                  : 0.0025,
+        "cone2"                 : 0.005,
+        "cone3"                 : 0.0025,
+        "wall size"             : 0.0012,
+        "BOICELDA"              : 0.1,
+    }
+
     configs = {
         "C": config_C,
         "M": config_M,
         "F": config_F,
+        "C2": config_C2,
         "M2": config_M2,
         "F2": config_F2,
+        "SF": config_SF,
     }
 
-    config = configs["F2"]
+    config = configs["C2"]
 
     mesh = True
     paraview = True

@@ -2,8 +2,8 @@ import numpy as np
 from scipy.optimize import fsolve
 
 h0 = 9.65e-4 # FL THCKNSS
-r = 1.21 # groth rato
-h_t = 0.625 # max hght/total
+r = 1.19 # groth rato
+h_t = 0.4 # max hght/total
 
 # h_t = ho*(1-r**N)/(1-r)
 
