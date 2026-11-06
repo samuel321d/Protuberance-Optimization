@@ -107,7 +107,7 @@ def plot_monitor(
 def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
     config_file = os.path.abspath(config_file)
     output_files_path = os.path.abspath(output_files_path)
-    history_file = os.path.join(output_files_path, "history_C2_JST_WLS.csv")
+    history_file = os.path.join(output_files_path, "history_4deg.csv")
     print(f"Running SU2 with configuration file: {config_file}")
 
     cmd = [MPIEXEC, "-n", str(n_processors), SU2_CFD, config_file]
@@ -163,8 +163,8 @@ def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
 
     plt.show()  # deja la gráfica final abierta (bloquea hasta cerrarla)
 
-    surface_output_file = os.path.join(output_files_path, "surface_C2_JST_WLS.vtu")
-    volume_output_file = os.path.join(output_files_path, "flow_C2_JST_WLS.vtu")
+    surface_output_file = os.path.join(output_files_path, "surface_4deg.vtu")
+    volume_output_file = os.path.join(output_files_path, "flow_4deg.vtu")
     for f in (surface_output_file, volume_output_file):
         if not os.path.exists(f):
             raise FileNotFoundError(f"SU2 terminó pero no se generó {f}")
@@ -177,7 +177,7 @@ def run_solver(config_file, output_files_path, n_processors=4, plot_every=2):
 # Config and mesh files 
 #========================================================================================
 config_file = "Rocket_japos_3d.cfg"
-mesh_file_name = "Mesh_C2.su2"
+mesh_file_name = "Mesh_F.su2"
 #========================================================================================
 
 #========================================================================================

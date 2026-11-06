@@ -377,17 +377,6 @@ def meshgen_3D(config = {}):
     msh.field.setNumber(BOIF2, "YCenter", 0)
     msh.field.setNumber(BOIF2, "ZCenter", 0)
 
-    # BOIF3 = msh.field.add("Box")
-    # msh.field.setNumber(BOIF3, "VIn", config["BOIF3"])
-    # msh.field.setNumber(BOIF3, "Thickness", config["BOIF3"])
-    # msh.field.setNumber(BOIF3, "VOut", config["global size"])
-    # msh.field.setNumber(BOIF3, "XMin", 0)
-    # msh.field.setNumber(BOIF3, "XMax", -60)
-    # msh.field.setNumber(BOIF3, "YMin", 0)
-    # msh.field.setNumber(BOIF3, "YMax", 270)
-    # msh.field.setNumber(BOIF3, "ZMin", 0)
-    # msh.field.setNumber(BOIF3, "ZMax", 0)
-
     BOIP1 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIP1, "VIn", config["BOIP1"])
     msh.field.setNumber(BOIP1, "Radius", 0.025*L)
