@@ -11,6 +11,7 @@ This file contains the function to generate the 3D mesh of the rocket.
 # Libraries
 # ===========================================================
 # 3rd party imports
+import os
 from pathlib import Path
 import shutil
 import math
@@ -22,7 +23,7 @@ import numpy as np
 # ===========================================================
 # Function
 # ===========================================================
-def meshgen_3D(config = {}):
+def meshgen_3D(mesh_folder, config=None):
     """
     Function to generate a mesh of the rocket.
     Includes the generation of inflation layers.
@@ -33,6 +34,9 @@ def meshgen_3D(config = {}):
     Returns:
         .format file containing mesh
     """
+
+    if config is None:
+        config = {}
 
     # Default configuration (in mm)
     default_config = {
@@ -447,7 +451,8 @@ def meshgen_3D(config = {}):
     gmsh.option.setNumber("Mesh.VolumeFaces", 1)
 
     # Read save directory
-    path = Path(__file__).parent / config["filename"]
+    #path = Path(__file__).parent / config["filename"]
+    path = os.path.join(mesh_folder, config["filename"])
     gmsh.write(str(path))
     # gmsh.fltk.run()
 

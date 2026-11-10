@@ -50,8 +50,8 @@ def config(path, mesh_name):
     }
     return config_CAT
 
-
+mesh_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Meshes")
 # mesh gen
 for i in range(len(cads_routes)):
-    mesh_gen = meshgen_3D(config(cads_routes[i], names[i]))
-    # FALTA MIRAR EL PATH DE LA MALLA
+    mesh_gen = meshgen_3D(mesh_folder, config(cads_routes[i], names[i]))
+    
