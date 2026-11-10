@@ -56,7 +56,8 @@ def meshgen_3D(config = {}):
         "prot_loc"              : 0.75,
         "BOIP1"                 : 1,
         "BOIP2"                 : 2,
-        "R_radius"              : 41.5*0.5
+        "R_radius"              : 41.5*0.5,
+        "Rocket_path"           : "Rocket_18_25.step"
     }
 
     # Read config
@@ -94,7 +95,8 @@ def meshgen_3D(config = {}):
     occm.synchronize()
 
     # Import rocket geometry
-    rocket_path = Path(__file__).parent / "Rocket_18_25.step"
+    #rocket_path = Path(__file__).parent / "Rocket_18_25.step"
+    rocket_path = config["Rocket_path"] 
     rocket = occm.importShapes(str(rocket_path), highestDimOnly=True)
 
     occm.synchronize()
@@ -487,6 +489,7 @@ if __name__ == "__main__":
         "wall size"             : 0.002,
         "BOICELDA"              : 0.001,
         "Prot_height"           : 6.225,
+        "Rocket_path"           : "Rocket_18_25.step"
     }
 
     config_M = {
@@ -592,6 +595,7 @@ if __name__ == "__main__":
     config_CAT = {
         **config_C,
         "filename"              : "Mesh_cat.su2",
+        "layer thickness"       : 9.58e-7,
         "layer ratio"           : 1.19,
         "total thickness"       : 0.001,
         "number of layers"      : 20,
