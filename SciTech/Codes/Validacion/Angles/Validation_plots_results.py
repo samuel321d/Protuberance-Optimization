@@ -80,44 +80,63 @@ plt.show()
 
 print(own_res_ca)
 # Errors calculation
+from scipy.interpolate import interp1d
 
+def interp_extrap1d(x_eval, x_datos, y_datos):
+    """
+    Interpola dentro del rango de x_datos y extrapola linealmente fuera de él
+    usando scipy.interpolate.interp1d de forma completamente vectorizada.
+    """
+    # Convertir a arrays de numpy por seguridad
+    x_datos = np.asarray(x_datos)
+    y_datos = np.asarray(y_datos)
+    
+    # Crear el objeto de interpolación configurado para extrapolar linealmente
+    f_interp_extrap = interp1d(x_datos, y_datos, kind='linear', fill_value="extrapolate")
+    
+    # Evaluar todos los ángulos simultáneamente
+    return f_interp_extrap(x_eval)
+angles_eval = np.array(angles) 
 # Interpolation of Wind tunnel data
-WDCY_interp = np.interp(angles[:-1], dfs_wt['WTCY']['AoA'], dfs_wt['WTCY']['Coeff'])
-WDCA_interp = np.interp(angles[:-1], dfs_wt['WTCA']['AoA'], dfs_wt['WTCA']['Coeff'])
-WDCM_interp = np.interp(angles[:-1], dfs_wt['WTCM']['AoA'], dfs_wt['WTCM']['Coeff'])
-print("Interpolated Wind Tunnel Data:")
+WDCY_interp = interp_extrap1d(angles_eval, dfs_wt['WTCY']['AoA'], dfs_wt['WTCY']['Coeff'])
+WDCA_interp = interp_extrap1d(angles_eval, dfs_wt['WTCA']['AoA'], dfs_wt['WTCA']['Coeff'])
+WDCM_interp = interp_extrap1d(angles_eval, dfs_wt['WTCM']['AoA'], dfs_wt['WTCM']['Coeff'])
+
+print("Interpolated/Extrapolated Wind Tunnel Data:")
 print(f"Side Force Coefficient (C_y): {WDCY_interp}")
 print(f"Axial Force Coefficient (C_a): {WDCA_interp}")
 print(f"Moment Coefficient (C_m): {WDCM_interp}")
-Errors_Cy = np.abs((np.array(own_res_cy[:-1]) - WDCY_interp) / (WDCY_interp.max() - WDCY_interp.min())) * 100
-Errors_Ca = np.abs((np.array(own_res_ca[:-1]) - WDCA_interp) /WDCA_interp) * 100   #(WDCA_interp.max() - WDCA_interp.min())) * 100
-Errors_Cm = np.abs((Cm_own[:-1] - WDCM_interp) / (WDCM_interp.max() - WDCM_interp.min())) * 100
 
-Errors_Cy2 = np.abs((np.array(own_res_cy[:-1]) - WDCY_interp) / (WDCY_interp)) * 100
-Errors_Ca2 = np.abs((np.array(own_res_ca[:-1]) - WDCA_interp) / (WDCA_interp)) * 100
-Errors_Cm2 = np.abs((Cm_own[:-1] - WDCM_interp) / (WDCM_interp)) * 100
+# --- 3. Cálculo de Errores (Asegúrate de quitar el '[:-1]' también en tus resultados propios) ---
+own_cy_arr = np.array(own_res_cy)
+own_ca_arr = np.array(own_res_ca)
+own_cm_arr = np.array(Cm_own)
+
+Errors_Cy = np.abs((own_cy_arr - WDCY_interp) / (WDCY_interp.max() - WDCY_interp.min())) * 100
+Errors_Ca = np.abs((own_ca_arr - WDCA_interp) / WDCA_interp) * 100   
+Errors_Cm = np.abs((own_cm_arr - WDCM_interp) / (WDCM_interp.max() - WDCM_interp.min())) * 100
 
 print("="*50)
 print("Validation Errors (%):")
 print(f"Side Force Coefficient (C_y)")
-for angle, error in zip(angles[:-1], Errors_Cy):
+for angle, error in zip(angles, Errors_Cy):
     print(f"Angle: {angle} deg, Error: {error:.2f}%")
 
 
 print(f"Axial Force Coefficient (C_a)")    
-for angle, error in zip(angles[:-1], Errors_Ca):
+for angle, error in zip(angles, Errors_Ca):
     print(f"Angle: {angle} deg, Error: {error:.2f}%")
 
 print(f"Moment Coefficient (C_m)")    
-for angle, error in zip(angles[:-1], Errors_Cm):
+for angle, error in zip(angles, Errors_Cm):
     print(f"Angle: {angle} deg, Error: {error:.2f}%")
 print("="*50)
 
 
 plt.figure(figsize=(7, 5))
-plt.plot(angles[:-1], Errors_Cy, 'o-', label='Side Force Coefficient $C_y$', color='black')
-plt.plot(angles[:-1], Errors_Ca, 's-', label='Axial Force Coefficient $C_a$', color='black')
-plt.plot(angles[:-1], Errors_Cm, '^-', label='Moment Coefficient $C_m$', color='black')
+plt.plot(angles, Errors_Cy, 'o-', label='Side Force Coefficient $C_y$', color='black')
+plt.plot(angles, Errors_Ca, 's-', label='Axial Force Coefficient $C_a$', color='black')
+plt.plot(angles, Errors_Cm, '^-', label='Moment Coefficient $C_m$', color='black')
 plt.xlabel(r"Angle of Attack $\alpha$, deg")
 plt.ylabel(r"Error, %")
 plt.legend()
