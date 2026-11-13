@@ -15,7 +15,7 @@ import numpy as np
 # ===========================================================
 # Functions
 # ===========================================================
-def hermit_bl(X0, X1, X0p, X1p, nps=30, clustering=True):
+def hermit_bl(X0, X1, X0p, X1p, nps=20, clustering=True):
     if clustering:
         beta = np.linspace(0, np.pi, nps)
         t = 0.5 * (1 - np.cos(beta))
@@ -38,7 +38,7 @@ def hermit_bl(X0, X1, X0p, X1p, nps=30, clustering=True):
     
     return xt, xdt
 
-def generate_hermite_paper_fairing(zeta1, zeta2, nps=30, export_filename="protuberance_coords.txt"):
+def generate_hermite_paper_fairing(zeta1, zeta2, nps=20, export_filename="protuberance_coords.txt"):
     x0 = 0.0
     x1 = 87.0
     y0 = 0.0
@@ -72,4 +72,4 @@ if __name__ == "__main__":
     zeta1_input = 1
     zeta2_input = 1
     
-    profile = generate_hermite_paper_fairing(zeta1_input, zeta2_input, nps=30)
+    profile = generate_hermite_paper_fairing(zeta1_input, zeta2_input, nps=20)

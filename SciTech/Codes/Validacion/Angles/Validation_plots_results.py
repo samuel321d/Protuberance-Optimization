@@ -21,7 +21,7 @@ dfs_cfd = {os.path.splitext(os.path.basename(f))[0]: pd.read_csv(f, names = ["Ao
 dfs_wt = {os.path.splitext(os.path.basename(f))[0]: pd.read_csv(f, names = ["AoA", "Coeff"]) for f in sorted(WTS)}
 
 
-angles = [1, 2, 4, 5, 8, 10, 12, 15]
+angles = [1, 2, 3, 4, 5, 8, 10, 12, 15]
 own_res_cy = []
 own_res_ca = []
 own_res_cm = []

@@ -90,7 +90,7 @@ for mapped in mapped_values:
 
 for value in real_values:
     profile = generate_hermite_paper_fairing(value[0], value[1],
-                                            nps = 30, export_filename = f"protuberance_coords_{value[0]}_{value[1]}.csv")
+                                            nps = 20, export_filename = f"protuberance_coords_{value[0]}_{value[1]}.csv")
 
 
     
@@ -100,7 +100,7 @@ for value in real_values:
 
 
 
-def find_param_bounds(zeta1, zeta2, nps=30):
+def find_param_bounds(zeta1, zeta2, nps=20):
     x0, x1 = 0.0, 87.0
     y0, y1 = 0.0, 22.0
 
@@ -132,8 +132,8 @@ def find_param_bounds(zeta1, zeta2, nps=30):
 
     return valid    
 min_zeta_1 = 0.0
-zeta_1 = np.linspace(min_zeta_1, 5,500)
-zeta_2 = np.linspace(min_zeta_1, 5,500)
+zeta_1 = np.linspace(min_zeta_1, 5,100)
+zeta_2 = np.linspace(min_zeta_1, 5,100)
 
 Z1, Z2 = np.meshgrid(zeta_1, zeta_2)
 
