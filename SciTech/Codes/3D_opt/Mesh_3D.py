@@ -23,7 +23,7 @@ import numpy as np
 # ===========================================================
 # Function
 # ===========================================================
-def meshgen_3D(mesh_folder, config=None):
+def meshgen_3D(mesh_folder , config = {}):
     """
     Function to generate a mesh of the rocket.
     Includes the generation of inflation layers.
@@ -34,9 +34,6 @@ def meshgen_3D(mesh_folder, config=None):
     Returns:
         .format file containing mesh
     """
-
-    if config is None:
-        config = {}
 
     # Default configuration (in mm)
     default_config = {
@@ -61,7 +58,7 @@ def meshgen_3D(mesh_folder, config=None):
         "BOIP1"                 : 1,
         "BOIP2"                 : 2,
         "R_radius"              : 41.5*0.5,
-        "Rocket_path"           : "Rocket_18_25.step"
+        "Rocket_path"           : "Rocket.step"
     }
 
     # Read config
@@ -99,8 +96,7 @@ def meshgen_3D(mesh_folder, config=None):
     occm.synchronize()
 
     # Import rocket geometry
-    #rocket_path = Path(__file__).parent / "Rocket_18_25.step"
-    rocket_path = config["Rocket_path"] 
+    rocket_path = Path(__file__).parent / config["Rocket_path"]
     rocket = occm.importShapes(str(rocket_path), highestDimOnly=True)
 
     occm.synchronize()
@@ -243,7 +239,7 @@ def meshgen_3D(mesh_folder, config=None):
     msh.field.setNumber(BOIS2, "ZCenter", 0)
 
     BOIS3 = msh.field.add("Ball")
-    msh.field.setNumber(BOIS3, "Radius", 0.008*L)
+    msh.field.setNumber(BOIS3, "Radius", 0.02*L)
     msh.field.setNumber(BOIS3, "Thickness", 4*config["BOIS3"])
     msh.field.setNumber(BOIS3, "VIn", config["BOIS3"])
     msh.field.setNumber(BOIS3, "VOut", config["global size"])
@@ -385,18 +381,18 @@ def meshgen_3D(mesh_folder, config=None):
 
     BOIP1 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIP1, "VIn", config["BOIP1"])
-    msh.field.setNumber(BOIP1, "Radius", 0.025*L)
+    msh.field.setNumber(BOIP1, "Radius", 0.025*L*0.5)
     msh.field.setNumber(BOIP1, "VOut", config["global size"])
     msh.field.setNumber(BOIP1, "XAxis", 0.1*L)
     msh.field.setNumber(BOIP1, "YAxis", 0)
     msh.field.setNumber(BOIP1, "ZAxis", 0)
-    msh.field.setNumber(BOIP1, "XCenter", (1-config["prot_loc"])*L - L)
+    msh.field.setNumber(BOIP1, "XCenter", 0.1*L*0.5 + (1-config["prot_loc"])*L - L)
     msh.field.setNumber(BOIP1, "YCenter", 0.9*config["R_radius"]*np.cos(np.deg2rad(45)))
     msh.field.setNumber(BOIP1, "ZCenter", 0.9*config["R_radius"]*np.cos(np.deg2rad(45)))
 
     BOIP2 = msh.field.add("Cylinder")
     msh.field.setNumber(BOIP2, "VIn", config["BOIP2"])
-    msh.field.setNumber(BOIP2, "Radius", 0.045*L)
+    msh.field.setNumber(BOIP2, "Radius", 0.045*L*0.5)
     msh.field.setNumber(BOIP2, "VOut", config["global size"])
     msh.field.setNumber(BOIP2, "XAxis", 0.4*L)
     msh.field.setNumber(BOIP2, "YAxis", 0)
@@ -451,7 +447,6 @@ def meshgen_3D(mesh_folder, config=None):
     gmsh.option.setNumber("Mesh.VolumeFaces", 1)
 
     # Read save directory
-    #path = Path(__file__).parent / config["filename"]
     path = os.path.join(mesh_folder, config["filename"])
     gmsh.write(str(path))
     # gmsh.fltk.run()
@@ -459,14 +454,16 @@ def meshgen_3D(mesh_folder, config=None):
     # Finalize
     gmsh.finalize()
 
-
+# ===========================================================
+# Test
+# ===========================================================
+if __name__ == "__main__":
     config_C = {
         "filename"              : "Mesh_C.su2",
         "layer thickness"       : 9.58e-7,
         "layer ratio"           : 1.21,
         "total thickness"       : 0.000625,
         "number of layers"      : 25,
-
         "BOIC1"                 : 0.2,
         "BOIC2"                 : 0.1,
         "BOIC3"                 : 0.05,
@@ -478,7 +475,6 @@ def meshgen_3D(mesh_folder, config=None):
         "BOIS1"                 : 0.005,
         "BOIS2"                 : 0.0025,
         "BOIS3"                 : 0.001,
-        
         "global size"           : 0.4,
         "L"                     : 0.368,
         "prot_loc"              : 0.75,
@@ -491,7 +487,6 @@ def meshgen_3D(mesh_folder, config=None):
         "wall size"             : 0.002,
         "BOICELDA"              : 0.001,
         "Prot_height"           : 6.225,
-        "Rocket_path"           : "Rocket_18_25.step"
     }
 
     config_M = {
@@ -596,8 +591,7 @@ def meshgen_3D(mesh_folder, config=None):
 
     config_CAT = {
         **config_C,
-        "filename"              : "Mesh_cat.su2",
-        "layer thickness"       : 9.58e-7,
+        "filename"              : "Rocket_09_255.su2",
         "layer ratio"           : 1.19,
         "total thickness"       : 0.001,
         "number of layers"      : 20,
@@ -610,23 +604,21 @@ def meshgen_3D(mesh_folder, config=None):
         "BOIF1"                 : 0.008*8.8,
         "BOIF2"                 : 0.004*8.8,
         "BOIS1"                 : 0.004*8.8,
-        "BOIS2"                 : 0.0015*8.8,
-        "BOIS3"                 : 0.0005*8.8,
+        "BOIS2"                 : 0.0015*5.75,
+        "BOIS3"                 : 0.0005*5,
         "global size"           : 0.4*8.8,
         "L"                     : 3.24,
         "prot_loc"              : 0.62,
-        "BOIP1"                 : 0.0006*8.8,
-        "BOIP2"                 : 0.0015*8.8,
+        "BOIP1"                 : 0.0006*6.5,
+        "BOIP2"                 : 0.0015*6.5,
         "R_radius"              : 0.087,
         "cone"                  : 0.003*8.8,
         "cone2"                 : 0.007*8.8,
         "cone3"                 : 0.003*8.8,
         "wall size"             : 0.0013*8.8,
-        "BOICELDA"              : 1
+        "BOICELDA"              : 1,
+        "Rocket name"           : "Rocket_09_255.step"
     }
-
-
-
 
     configs = {
         "C": config_C,
@@ -641,7 +633,8 @@ def meshgen_3D(mesh_folder, config=None):
 
     config = configs["CT"]
 
-    mesh = True
+    mesh = False
+
     paraview = True
 
     # Generate mesh
