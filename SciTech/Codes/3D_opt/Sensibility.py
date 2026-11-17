@@ -22,10 +22,15 @@ plt.rcParams.update({
 folder = os.path.dirname(os.path.abspath(__file__))
 # calling the csv´s classified by the source
 Histories = glob(os.path.join(folder,"Results",  "history_*.csv"))
-
+archivos_ordenados = sorted(
+    Histories, 
+    key=lambda f: os.path.basename(f).lower()
+)
 # Dictionaries to store the dataframes
-dfs_hist = {os.path.splitext(os.path.basename(f))[0]: pd.read_csv(f) for f in sorted(Histories)}
-
+dfs_hist = {
+    os.path.splitext(os.path.basename(f))[0]: pd.read_csv(f) 
+    for f in archivos_ordenados
+}
 print("Files readed: ", len(dfs_hist))
 
 for key in dfs_hist:
@@ -118,10 +123,11 @@ df_ccd = pd.DataFrame({
     "mapped_values_x1": [x[0] for x in mapped_values],
     "mapped_values_x2": [x[1] for x in mapped_values],
     "real_values_x1": [x[0] for x in real_values],
-    "real_values_x2": [x[1] for x in real_values]
+    "real_values_x2": [x[1] for x in real_values],
+    "Real_pairs": real_values
 })
 
-df_ccd = df_ccd.sort_values(by = "real_values_x1").reset_index(drop=True)  
+df_ccd = df_ccd.sort_values(by = "Real_pairs").reset_index(drop=True)  
 df_ccd["Cy"] = res_cy
 df_ccd["Ca"] = res_ca
 df_ccd["Cm"] = res_cm
@@ -161,46 +167,57 @@ if plots:
     plt.show()
 
 
+    fig, axs = plt.subplots(3, 2, figsize=(12, 10))
+    axs = axs.flatten()
 
+    for i, coef in enumerate(coefs):
+        axs[i].plot(df_ccd[coef], color='k', label='Data Points')
+        axs[i].set_xlabel('Run')
+        axs[i].set_ylabel(coef)
+        axs[i].set_title(f'{coef} variation for mapping')
+        axs[i].legend()
+        axs[i].grid()
+    plt.tight_layout()
+    plt.show()
 
+formula_ = {
+    "Quadratic": (
+        "{response} ~ X1 + X2 + X1:X2 "
+        "+ I(X1**2) + I(X2**2)"
+    ),
 
+    "Linear": (
+        "{response} ~ X1 + X2"
+    ),
 
-
-formula_ = (
-    "{response} ~ X1 + X2 + "
-    "X1:X2 + I(X1**2) + I(X2**2)"
-)
+    "Interaction": (
+        "{response} ~ X1 + X2 + X1:X2"
+    )
+}
 
 models = {}
 
-
-
-
-# Models for each coefficient
-
 for coef in coefs:
 
-    formula = formula_.format(response=coef)
+    for model_name, form in formula_.items():
 
-    model = smf.ols(formula, data=df_ccd).fit()
+        formula = form.format(response=coef)
 
-    models[coef] = model
+        model = smf.ols(formula, data=df_ccd).fit()
 
-    print("\n" + "="*50)
-    print(f"Coef: {coef}")
-    print("="*50)
+        # Store each model independently
+        models[(coef, model_name)] = model
 
-    print(model.summary())
+        print("\n" + "="*60)
+        print(f"Coefficient: {coef}")
+        print(f"Model: {model_name}")
+        print("="*60)
 
-    print("Design matrix rank:",
-          model.model.rank)
+        print(model.summary())
 
-    print("Number of observations:",
-          model.nobs)
-
-    print("Residual degrees of freedom:",
-          model.df_resid)
-
+        print("Design matrix rank:", model.model.rank)
+        print("Number of observations:", model.nobs)
+        print("Residual degrees of freedom:", model.df_resid)
 
 
-
+print(df_ccd[["real_values_x1", "real_values_x2", "Cy"]])
